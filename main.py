@@ -1,9 +1,11 @@
 import os
 import uvicorn
+import sqlalchemy
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from app import routes, db
+from app.db import db_manager
 
 # --- App Initialization ---
 app = FastAPI(title="Strength Log API")
@@ -40,8 +42,8 @@ async def serve_pwa(request: Request, full_path: str):
 
 # --- Main Execution (for local running) ---
 if __name__ == "__main__":
-    db.init_db_if_needed()
-    port = int(os.environ.get("PORT", 5001))
+    DB_manager = db_manager()
+    port = int(os.environ.get("PORT", 5004))
     print(f"Serving app on http://127.0.0.1:{port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
 
