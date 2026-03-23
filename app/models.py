@@ -37,14 +37,6 @@ class WorkoutOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class TipRequest(BaseModel):
-    prompt: str
-
-
-class TipResponse(BaseModel):
-    tip: str
-
-
 class AnalysisData(BaseModel):
     labels: List[str]
     data: List[float]

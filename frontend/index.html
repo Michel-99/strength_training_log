@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strength Log</title>
-    
+
     <!-- PWA Tags -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1F2937"> <!-- Dark background color -->
@@ -13,24 +14,43 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- ADD CHART.JS LIBRARY -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
         @import url('https://rsms.me/inter/inter.css');
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #4B5563; border-radius: 3px; }
-        ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
-        .form-input { transition: all 0.3s ease; }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #4B5563;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6B7280;
+        }
+
+        .form-input {
+            transition: all 0.3s ease;
+        }
+
         .form-input:focus {
-            box-shadow: 0 0 0 2px #3b82f6; /* Blue ring on focus */
+            box-shadow: 0 0 0 2px #3b82f6;
+            /* Blue ring on focus */
             border-color: #3b82f6;
         }
     </style>
 </head>
+
 <body class="bg-gray-900 text-gray-100 min-h-screen">
 
     <div class="container mx-auto max-w-2xl p-4 pt-8">
-        
+
         <!-- Header -->
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-white">Strength Log</h1>
@@ -39,34 +59,43 @@
 
         <!-- Main Card -->
         <div class="bg-gray-800 shadow-xl rounded-lg overflow-hidden">
-            
+
             <!-- Form Section -->
             <form id="log-form" class="p-6 border-b border-gray-700">
                 <h2 class="text-2xl font-semibold mb-5 text-white">Log a New Workout</h2>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                         <label for="exercise" class="block text-sm font-medium text-gray-300 mb-1">Exercise</label>
-                        <input type="text" id="exercise" class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400" placeholder="e.g., Bench Press" required>
+                        <input type="text" id="exercise"
+                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400"
+                            placeholder="e.g., Bench Press" required>
                     </div>
                     <div>
                         <label for="weight" class="block text-sm font-medium text-gray-300 mb-1">Weight (kg)</label>
-                        <input type="number" id="weight" step="0.5" min="0" class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400" placeholder="e.g., 60" required>
+                        <input type="number" id="weight" step="0.5" min="0"
+                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400"
+                            placeholder="e.g., 60" required>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
                         <label for="sets" class="block text-sm font-medium text-gray-300 mb-1">Sets</label>
-                        <input type="number" id="sets" min="1" class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400" placeholder="e.g., 3" required>
+                        <input type="number" id="sets" min="1"
+                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400"
+                            placeholder="e.g., 3" required>
                     </div>
                     <div>
                         <label for="reps" class="block text-sm font-medium text-gray-300 mb-1">Reps (per set)</label>
-                        <input type="number" id="reps" min="1" class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400" placeholder="e.g., 5" required>
+                        <input type="number" id="reps" min="1"
+                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400"
+                            placeholder="e.g., 5" required>
                     </div>
                 </div>
 
-                <button type="submit" id="log-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-50">
+                <button type="submit" id="log-button"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-50">
                     Log Workout
                 </button>
             </form>
@@ -75,8 +104,10 @@
             <div class="p-6 border-b border-gray-700">
                 <h2 class="text-2xl font-semibold mb-5 text-white">Progress Analysis</h2>
                 <div>
-                    <label for="exercise-select" class="block text-sm font-medium text-gray-300 mb-1">Select Exercise</label>
-                    <select id="exercise-select" class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400 transition">
+                    <label for="exercise-select" class="block text-sm font-medium text-gray-300 mb-1">Select
+                        Exercise</label>
+                    <select id="exercise-select"
+                        class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-400 transition">
                         <option value="">Loading exercises...</option>
                     </select>
                 </div>
@@ -89,14 +120,19 @@
             <div class="p-6">
                 <div class="flex justify-between items-center mb-5">
                     <h2 class="text-2xl font-semibold text-white">Workout History</h2>
-                    <span id="offline-indicator" class="hidden text-xs font-medium bg-yellow-600 text-yellow-100 px-2 py-1 rounded-full">
+                    <span id="offline-indicator"
+                        class="hidden text-xs font-medium bg-yellow-600 text-yellow-100 px-2 py-1 rounded-full">
                         Offline
                     </span>
                 </div>
                 <div id="loading-spinner" class="text-center text-gray-400">
-                    <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
                     </svg>
                     Loading history...
                 </div>
@@ -107,23 +143,9 @@
         </div>
     </div>
 
-    <!-- AI Tip Modal -->
-    <div id="ai-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
-        <div class="bg-gray-800 rounded-lg shadow-xl max-w-lg w-full">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold text-white">✨ AI Coaching Tip</h3>
-                    <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
-                </div>
-                <div id="modal-content" class="text-gray-300">
-                    <!-- AI content goes here -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- Custom Alert / Message Box -->
-    <div id="message-box" class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-lg shadow-xl z-50">
+    <div id="message-box"
+        class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-lg shadow-xl z-50">
         <span id="message-text"></span>
     </div>
 
@@ -144,7 +166,7 @@
 
         // --- Configuration ---
         const API_BASE_URL = '';
-        
+
         // --- DOM Elements ---
         const form = document.getElementById('log-form');
         const logButton = document.getElementById('log-button');
@@ -154,12 +176,7 @@
         const weightInput = document.getElementById('weight');
         const setsInput = document.getElementById('sets');
         const repsInput = document.getElementById('reps');
-        
-        // Modal elements
-        const aiModal = document.getElementById('ai-modal');
-        const modalContent = document.getElementById('modal-content');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        
+
         // Message Box elements
         const messageBox = document.getElementById('message-box');
         const messageText = document.getElementById('message-text');
@@ -180,14 +197,14 @@
             messageText.textContent = message;
             messageBox.className = `fixed bottom-4 right-4 text-white py-3 px-5 rounded-lg shadow-xl z-50 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
             messageBox.classList.remove('hidden');
-            
+
             setTimeout(() => {
                 messageBox.classList.add('hidden');
             }, 3000); // Hide after 3 seconds
         }
 
         // --- API Functions ---
-        
+
         /**
          * Fetches all workouts from the API
          */
@@ -201,15 +218,15 @@
 
             loadingSpinner.classList.remove('hidden');
             workoutList.innerHTML = ''; // Clear existing list
-            
+
             try {
                 // Use relative path: '/workouts'
-                const response = await fetch(`${API_BASE_URL}/workouts`); 
+                const response = await fetch(`${API_BASE_URL}/workouts`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const workouts = await response.json();
-                
+
                 if (workouts.length === 0) {
                     workoutList.innerHTML = '<p class="text-center text-gray-400">No workouts logged yet. Get started!</p>';
                 } else {
@@ -229,7 +246,7 @@
          */
         async function handleFormSubmit(event) {
             event.preventDefault(); // Stop form from reloading page
-            
+
             if (isOffline) {
                 showMessage("You are offline. Cannot log new workout.", true);
                 return;
@@ -257,9 +274,9 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 const newWorkout = await response.json();
-                
+
                 // Clear "No workouts" message if it exists
                 if (workoutList.querySelector('p')) {
                     workoutList.innerHTML = '';
@@ -268,7 +285,7 @@
                 renderWorkout(newWorkout, true); // Add new workout to top of list
                 form.reset(); // Clear the form fields
                 showMessage('Workout logged successfully!', false);
-                
+
                 // Refresh exercise dropdown in case this is a new exercise
                 loadExerciseDropdown();
 
@@ -289,7 +306,7 @@
                 showMessage("You are offline. Cannot delete workout.", true);
                 return;
             }
-            
+
             // ... (rest of delete function is identical) ...
             const originalHeight = workoutCard.offsetHeight;
             workoutCard.style.height = `${originalHeight}px`;
@@ -298,7 +315,7 @@
             workoutCard.style.transform = 'translateX(-100%)';
             workoutCard.style.padding = '0';
             workoutCard.style.margin = '0';
-            
+
             setTimeout(() => {
                 workoutCard.remove();
                 if (workoutList.children.length === 0) {
@@ -316,64 +333,12 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
+
                 showMessage('Workout deleted.', false);
 
             } catch (error) {
                 console.error('Error deleting workout:', error);
                 showMessage('Failed to delete on server. Please refresh.', true);
-            }
-        }
-        
-        /**
-         * Gets an AI tip from the backend
-         */
-        async function getAiTip(workout) {
-            // ... (rest of AI tip function is identical) ...
-            if (isOffline) {
-                showMessage("You are offline. Cannot get AI tips.", true);
-                return;
-            }
-            modalContent.innerHTML = `
-                <div class="text-center">
-                    <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Generating tip for your ${workout.exercise_name} session...
-                </div>`;
-            aiModal.classList.remove('hidden');
-            const prompt = `
-                Act as an expert strength and conditioning coach.
-                A user just completed a workout:
-                - Exercise: ${workout.exercise_name}
-                - Sets: ${workout.sets}
-                - Reps: ${workout.reps}
-                - Weight: ${workout.weight_kg} kg
-
-                Provide one concise, actionable tip for their next session. 
-                Focus on form, progressive overload, or recovery.
-                Keep the response under 75 words.
-                Format the response as simple HTML paragraphs.
-            `;
-            try {
-                const response = await fetch(`${API_BASE_URL}/generate-tip`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || `HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                const cleanTip = data.tip
-                    .replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, "")
-                    .replace(/onerror\s*=\s*["'][^"']*["']/gim, "");
-                modalContent.innerHTML = cleanTip;
-            } catch (error) {
-                console.error('Error getting AI tip:', error);
-                modalContent.innerHTML = `<p class="text-red-400">Sorry, failed to generate a tip. ${error.message}</p>`;
             }
         }
 
@@ -391,12 +356,12 @@
                 const response = await fetch(`${API_BASE_URL}/exercises`);
                 if (!response.ok) throw new Error('Failed to fetch exercises');
                 const exercises = await response.json();
-                
+
                 exerciseSelect.innerHTML = '<option value="">-- Select an exercise --</option>'; // Clear
                 if (exercises.length === 0) {
-                     exerciseSelect.innerHTML = '<option value="">-- Log a workout first --</option>';
+                    exerciseSelect.innerHTML = '<option value="">-- Log a workout first --</option>';
                 }
-                
+
                 exercises.forEach(ex => {
                     const option = document.createElement('option');
                     option.value = ex;
@@ -408,16 +373,16 @@
                 exerciseSelect.innerHTML = '<option value="">Error loading exercises</option>';
             }
         }
-        
+
         /**
          * Fetches analysis data and updates the chart
          */
         async function updateChart(exerciseName) {
             if (!exerciseName) {
-                if(chartInstance) chartInstance.destroy();
+                if (chartInstance) chartInstance.destroy();
                 return;
             }
-            
+
             if (isOffline) {
                 showMessage("You are offline. Cannot load analysis.", true);
                 return;
@@ -426,13 +391,13 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/analysis?exercise=${encodeURIComponent(exerciseName)}`);
                 if (!response.ok) throw new Error('Failed to fetch analysis data');
-                
+
                 const data = await response.json();
-                
+
                 if (chartInstance) {
                     chartInstance.destroy(); // Clear old chart
                 }
-                
+
                 chartInstance = new Chart(chartCanvas, {
                     type: 'line',
                     data: {
@@ -483,15 +448,15 @@
                         maintainAspectRatio: true
                     }
                 });
-                
+
             } catch (error) {
-                 console.error('Error updating chart:', error);
-                 showMessage('Failed to load chart data.', true);
+                console.error('Error updating chart:', error);
+                showMessage('Failed to load chart data.', true);
             }
         }
 
         // --- Rendering ---
-        
+
         /**
          * Creates and inserts the HTML for a single workout card
          */
@@ -500,9 +465,9 @@
             // ... (rest of renderWorkout function is identical) ...
             workoutCard.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center transition-all duration-300';
             const date = new Date(workout.log_date * 1000);
-            const formattedDate = date.toLocaleDateString(undefined, { 
-                month: 'short', 
-                day: 'numeric' 
+            const formattedDate = date.toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric'
             });
             const formattedTime = date.toLocaleTimeString(undefined, {
                 hour: '2-digit',
@@ -516,9 +481,6 @@
                         ${workout.sets} sets &times; ${workout.reps} reps @ ${workout.weight_kg} kg
                     </p>
                     <p class="text-xs text-gray-400 mt-1">${formattedDate}, ${formattedTime}</p>
-                </div>
-                <div class="flex-shrink-0 flex items-center space-x-2">
-                    <button class="get-tip-btn text-xs bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-2 rounded-md transition-all">
                         Get Tip ✨
                     </button>
                     <button class="delete-btn text-gray-400 hover:text-red-500 transition-all p-1 rounded-full">
@@ -526,22 +488,11 @@
                     </button>
                 </div>
             `;
-            
+
             // Add event listeners
             workoutCard.querySelector('.delete-btn').addEventListener('click', (e) => {
                 e.stopPropagation(); // Prevent card click
                 deleteWorkout(workout.id, workoutCard);
-            });
-            
-            workoutCard.querySelector('.get-tip-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                const workoutData = {
-                    exercise_name: workout.exercise_name,
-                    sets: workout.sets,
-                    reps: workout.reps,
-                    weight_kg: workout.weight_kg
-                };
-                getAiTip(workoutData);
             });
 
             if (prepend) {
@@ -552,17 +503,9 @@
         }
 
         // --- Event Listeners ---
-        
+
         // Form submission
         form.addEventListener('submit', handleFormSubmit);
-
-        // Modal close buttons
-        closeModalBtn.addEventListener('click', () => aiModal.classList.add('hidden'));
-        aiModal.addEventListener('click', (e) => {
-            if (e.target === aiModal) { // Only close if clicking on the background
-                aiModal.classList.add('hidden');
-            }
-        });
 
         // Online/Offline Listeners
         function updateOnlineStatus() {
@@ -585,7 +528,7 @@
 
         window.addEventListener('online', updateOnlineStatus);
         window.addEventListener('offline', updateOnlineStatus);
-        
+
         // --- NEW: Chart dropdown listener ---
         exerciseSelect.addEventListener('change', (e) => {
             updateChart(e.target.value);
@@ -598,5 +541,5 @@
 
     </script>
 </body>
-</html>
 
+</html>

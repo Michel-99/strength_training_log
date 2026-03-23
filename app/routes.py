@@ -49,15 +49,6 @@ def analysis(exercise: str):
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=str(e))
 
-# @router.post("/generate-tip", response_model=models.TipResponse)
-# def generate_tip(req: models.TipRequest):
-#     """Generates an AI tip based on a prompt."""
-#     try:
-#         tip = service.logic_get_ai_tip(req.prompt)
-#         return models.TipResponse(tip=tip)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
 # @router.get("/exercises", response_model=List[str])
 # def get_exercises(conn = DBConnection):
 #     """Fetches a list of unique exercise names."""

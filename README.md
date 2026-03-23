@@ -31,18 +31,6 @@ Install Libraries:
 pip install -r requirements.txt
 
 
-Set Your Gemini API Key:
-
-macOS/Linux:
-
-export GEMINI_API_KEY='YOUR_KEY_HERE'
-
-
-Windows (PowerShell):
-
-$env:GEMINI_API_KEY='YOUR_KEY_HERE'
-
-
 Run the App (One Command):
 
 python main.py
@@ -83,10 +71,6 @@ Add Environment Variables:
 Key: DATABASE_URL
 
 Value: Paste the "Internal Database URL".
-
-Key: GEMINI_API_KEY
-
-Value: Paste your Google AI Studio API key.
 
 Deploy!
 
