@@ -1,41 +1,75 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import List
 
 from app import models, service
+from app.db import User
 
 router = APIRouter()
+auth_scheme = HTTPBearer()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(auth_scheme),
+) -> User:
+    user = service.get_user_from_token(credentials.credentials)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+    return user
+
+
+@router.post("/auth/register", response_model=models.AuthResponse, status_code=201)
+def register(payload: models.AuthRegister):
+    """Registers a new account and returns an access token."""
+    try:
+        user, token = service.register_user(payload)
+        return models.AuthResponse(access_token=token, email=user.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+
+
+@router.post("/auth/login", response_model=models.AuthResponse)
+def login(payload: models.AuthLogin):
+    """Authenticates with email/password and returns an access token."""
+    try:
+        user, token = service.login_user(payload)
+        return models.AuthResponse(access_token=token, email=user.email)
+    except PermissionError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
 
 
 @router.post("/workouts", response_model=models.WorkoutOut, status_code=201)
-def create_workout(workout: models.WorkoutCreate):
+def create_workout(
+    workout: models.WorkoutCreate, user: User = Depends(get_current_user)
+):
     """Logs a new workout entry."""
-    return service.add_workout(workout)
+    return service.add_workout(workout, user.id)
 
 
 @router.get("/workouts", response_model=List[models.WorkoutOut])
-def list_workouts():
+def list_workouts(user: User = Depends(get_current_user)):
     """Returns all workouts ordered by most recent first."""
-    return service.get_workouts()
+    return service.get_workouts(user.id)
 
 
 @router.delete("/workouts/{workout_id}", status_code=204)
-def remove_workout(workout_id: int):
+def remove_workout(workout_id: int, user: User = Depends(get_current_user)):
     """Deletes a workout by its ID."""
-    deleted = service.delete_workout(workout_id)
+    deleted = service.delete_workout(workout_id, user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Workout not found")
 
 
 @router.get("/exercises", response_model=List[str])
-def list_exercises():
+def list_exercises(user: User = Depends(get_current_user)):
     """Returns a sorted list of unique exercise names."""
-    return service.get_exercises()
+    return service.get_exercises(user.id)
 
 
 @router.get("/analysis", response_model=models.AnalysisData)
-def analysis(exercise: str):
+def analysis(exercise: str, user: User = Depends(get_current_user)):
     """Returns weight progression data for a given exercise."""
-    return service.get_analysis_data(exercise)
+    return service.get_analysis_data(exercise, user.id)
 
 
 # @router.delete("/workouts/{workout_id}")

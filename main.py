@@ -26,7 +26,8 @@ async def serve_pwa(request: Request, full_path: str):
     """
     # Check if the path is an API route
     if (
-        full_path.startswith("workouts")
+        full_path.startswith("auth")
+        or full_path.startswith("workouts")
         or full_path.startswith("exercises")
         or full_path.startswith("analysis")
     ):
