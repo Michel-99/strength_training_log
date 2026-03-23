@@ -25,7 +25,10 @@ def register(payload: models.AuthRegister):
         user, token = service.register_user(payload)
         return models.AuthResponse(access_token=token, email=user.email)
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc))
+        detail = str(exc)
+        if detail == "Email already registered":
+            raise HTTPException(status_code=409, detail=detail)
+        raise HTTPException(status_code=400, detail=detail)
 
 
 @router.post("/auth/login", response_model=models.AuthResponse)
