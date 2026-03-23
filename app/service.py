@@ -13,6 +13,7 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _jwt_secret = os.environ.get("JWT_SECRET_KEY", "change-this-secret-before-production")
 _jwt_algorithm = "HS256"
 _jwt_expire_minutes = int(os.environ.get("JWT_EXPIRE_MINUTES", "10080"))
+_bcrypt_max_password_bytes = 72
 
 
 def _normalize_email(email: str) -> str:
@@ -25,10 +26,16 @@ def _create_access_token(user_id: int) -> str:
     return jwt.encode(payload, _jwt_secret, algorithm=_jwt_algorithm)
 
 
+def _validate_password_length(password: str) -> None:
+    if len(password.encode("utf-8")) > _bcrypt_max_password_bytes:
+        raise ValueError("Password must be at most 72 bytes for bcrypt")
+
+
 def register_user(data: AuthRegister) -> tuple[User, str]:
     session = _db.get_session()
     try:
         email = _normalize_email(data.email)
+        _validate_password_length(data.password)
         existing = session.query(User).filter(User.email == email).first()
         if existing:
             raise ValueError("Email already registered")
