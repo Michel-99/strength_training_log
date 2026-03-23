@@ -37,12 +37,20 @@ class WorkoutOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class TipRequest(BaseModel):
-    prompt: str
+class AuthRegister(BaseModel):
+    email: str
+    password: str = Field(min_length=8, max_length=128)
 
 
-class TipResponse(BaseModel):
-    tip: str
+class AuthLogin(BaseModel):
+    email: str
+    password: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    email: str
 
 
 class AnalysisData(BaseModel):
