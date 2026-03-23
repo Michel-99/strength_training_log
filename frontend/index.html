@@ -41,6 +41,26 @@
             box-shadow: 0 0 0 2px #3b82f6;
             border-color: #3b82f6;
         }
+
+        .section-content {
+            overflow: hidden;
+            max-height: 2000px;
+            opacity: 1;
+            transition: max-height 0.25s ease, opacity 0.25s ease;
+        }
+
+        .section-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .section-toggle .chevron {
+            transition: transform 0.2s ease;
+        }
+
+        .section-toggle[aria-expanded="false"] .chevron {
+            transform: rotate(-90deg);
+        }
     </style>
 </head>
 
@@ -87,78 +107,102 @@
                     class="text-sm bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 rounded-md">Logout</button>
             </div>
 
-            <form id="log-form" class="p-6 border-b border-gray-700">
-                <h2 class="text-2xl font-semibold mb-5 text-white">Log a New Workout</h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label for="exercise" class="block text-sm font-medium text-gray-300 mb-1">Exercise</label>
-                        <input type="text" id="exercise"
-                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
-                            placeholder="e.g., Bench Press" required>
-                    </div>
-                    <div>
-                        <label for="weight" class="block text-sm font-medium text-gray-300 mb-1">Weight (kg)</label>
-                        <input type="number" id="weight" step="0.5" min="0"
-                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
-                            placeholder="e.g., 60" required>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label for="sets" class="block text-sm font-medium text-gray-300 mb-1">Sets</label>
-                        <input type="number" id="sets" min="1"
-                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
-                            placeholder="e.g., 3" required>
-                    </div>
-                    <div>
-                        <label for="reps" class="block text-sm font-medium text-gray-300 mb-1">Reps (per set)</label>
-                        <input type="number" id="reps" min="1"
-                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
-                            placeholder="e.g., 5" required>
-                    </div>
-                </div>
-
-                <button type="submit" id="log-button"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-50">
-                    Log Workout
+            <div class="border-b border-gray-700">
+                <button type="button"
+                    class="section-toggle w-full flex items-center justify-between px-6 py-4 text-left text-white"
+                    data-target="log-section" aria-expanded="true">
+                    <span class="text-2xl font-semibold">Log a New Workout</span>
+                    <span class="chevron text-xl">▾</span>
                 </button>
-            </form>
+                <div id="log-section" class="section-content">
+                    <form id="log-form" class="px-6 pb-6 pt-1">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="exercise"
+                                    class="block text-sm font-medium text-gray-300 mb-1">Exercise</label>
+                                <input type="text" id="exercise"
+                                    class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
+                                    placeholder="e.g., Bench Press" required>
+                            </div>
+                            <div>
+                                <label for="weight" class="block text-sm font-medium text-gray-300 mb-1">Weight
+                                    (kg)</label>
+                                <input type="number" id="weight" step="0.5" min="0"
+                                    class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
+                                    placeholder="e.g., 60" required>
+                            </div>
+                        </div>
 
-            <div class="p-6 border-b border-gray-700">
-                <h2 class="text-2xl font-semibold mb-5 text-white">Progress Analysis</h2>
-                <div>
-                    <label for="exercise-select" class="block text-sm font-medium text-gray-300 mb-1">Select
-                        Exercise</label>
-                    <select id="exercise-select"
-                        class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white transition">
-                        <option value="">Loading exercises...</option>
-                    </select>
-                </div>
-                <div class="mt-4 bg-gray-700 p-4 rounded-lg">
-                    <canvas id="workout-chart"></canvas>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label for="sets" class="block text-sm font-medium text-gray-300 mb-1">Sets</label>
+                                <input type="number" id="sets" min="1"
+                                    class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
+                                    placeholder="e.g., 3" required>
+                            </div>
+                            <div>
+                                <label for="reps" class="block text-sm font-medium text-gray-300 mb-1">Reps (per
+                                    set)</label>
+                                <input type="number" id="reps" min="1"
+                                    class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white"
+                                    placeholder="e.g., 5" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="log-button"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-md transition duration-300 ease-in-out transform hover:-translate-y-0.5 disabled:opacity-50">
+                            Log Workout
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-5">
-                    <h2 class="text-2xl font-semibold text-white">Workout History</h2>
+            <div class="border-b border-gray-700">
+                <button type="button"
+                    class="section-toggle w-full flex items-center justify-between px-6 py-4 text-left text-white"
+                    data-target="analysis-section" aria-expanded="true">
+                    <span class="text-2xl font-semibold">Progress Analysis</span>
+                    <span class="chevron text-xl">▾</span>
+                </button>
+                <div id="analysis-section" class="section-content px-6 pb-6 pt-1">
+                    <div>
+                        <label for="exercise-select" class="block text-sm font-medium text-gray-300 mb-1">Select
+                            Exercise</label>
+                        <select id="exercise-select"
+                            class="form-input w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white transition">
+                            <option value="">Loading exercises...</option>
+                        </select>
+                    </div>
+                    <div class="mt-4 bg-gray-700 p-4 rounded-lg">
+                        <canvas id="workout-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex items-center justify-between px-6 py-4">
+                    <button type="button" class="section-toggle flex items-center gap-3 text-left text-white"
+                        data-target="history-section" aria-expanded="true">
+                        <span class="text-2xl font-semibold">Workout History</span>
+                        <span class="chevron text-xl">▾</span>
+                    </button>
                     <span id="offline-indicator"
                         class="hidden text-xs font-medium bg-yellow-600 text-yellow-100 px-2 py-1 rounded-full">Offline</span>
                 </div>
-                <div id="loading-spinner" class="text-center text-gray-400 hidden">
-                    <svg class="animate-spin h-5 w-5 text-white inline-block mr-2" xmlns="http://www.w3.org/2000/svg"
-                        fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
-                    Loading history...
+                <div id="history-section" class="section-content px-6 pb-6 pt-1">
+                    <div id="loading-spinner" class="text-center text-gray-400 hidden">
+                        <svg class="animate-spin h-5 w-5 text-white inline-block mr-2"
+                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        Loading history...
+                    </div>
+                    <div id="workout-list" class="space-y-4"></div>
                 </div>
-                <div id="workout-list" class="space-y-4"></div>
             </div>
         </div>
     </div>
@@ -206,6 +250,22 @@
         const chartCanvas = document.getElementById('workout-chart').getContext('2d');
         let chartInstance = null;
         let isOffline = !navigator.onLine;
+
+        function toggleSection(button) {
+            const targetId = button.dataset.target;
+            const content = document.getElementById(targetId);
+            if (!content) return;
+
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            button.setAttribute('aria-expanded', String(!isExpanded));
+            content.classList.toggle('collapsed', isExpanded);
+        }
+
+        function initCollapsibles() {
+            document.querySelectorAll('.section-toggle').forEach((button) => {
+                button.addEventListener('click', () => toggleSection(button));
+            });
+        }
 
         function getToken() {
             return localStorage.getItem(TOKEN_KEY);
@@ -557,6 +617,7 @@
         window.addEventListener('offline', updateOnlineStatus);
         exerciseSelect.addEventListener('change', (e) => updateChart(e.target.value));
 
+        initCollapsibles();
         updateOnlineStatus();
         const existingToken = getToken();
         const existingEmail = localStorage.getItem(EMAIL_KEY);
