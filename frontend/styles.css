@@ -1,0 +1,47 @@
+@import url('https://rsms.me/inter/inter.css');
+
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #4B5563;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #6B7280;
+}
+
+.form-input {
+    transition: all 0.3s ease;
+}
+
+.form-input:focus {
+    box-shadow: 0 0 0 2px #3b82f6;
+    border-color: #3b82f6;
+}
+
+.section-content {
+    overflow: hidden;
+    max-height: 2000px;
+    opacity: 1;
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+}
+
+.section-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.section-toggle .chevron {
+    transition: transform 0.2s ease;
+}
+
+.section-toggle[aria-expanded="false"] .chevron {
+    transform: rotate(-90deg);
+}
