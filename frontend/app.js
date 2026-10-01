@@ -29,9 +29,8 @@ const logButton = document.getElementById('log-button');
 const workoutList = document.getElementById('workout-list');
 const loadingSpinner = document.getElementById('loading-spinner');
 const exerciseInput = document.getElementById('exercise');
-const weightInput = document.getElementById('weight');
-const setsInput = document.getElementById('sets');
-const repsInput = document.getElementById('reps');
+const setRows = document.getElementById('set-rows');
+const addSetBtn = document.getElementById('add-set-btn');
 
 const messageBox = document.getElementById('message-box');
 const messageText = document.getElementById('message-text');
@@ -40,6 +39,9 @@ const offlineIndicator = document.getElementById('offline-indicator');
 const exerciseSelect = document.getElementById('exercise-select');
 const chartElement = document.getElementById('workout-chart');
 let isOffline = !navigator.onLine;
+let rangeDays = 30;
+let lastAnalysis = null;
+let lastExercise = '';
 
 function toggleSection(button) {
     const targetId = button.dataset.target;
@@ -49,6 +51,23 @@ function toggleSection(button) {
     const isExpanded = button.getAttribute('aria-expanded') === 'true';
     button.setAttribute('aria-expanded', String(!isExpanded));
     content.classList.toggle('collapsed', isExpanded);
+}
+
+const views = {
+    log: document.getElementById('view-log'),
+    analysis: document.getElementById('view-analysis')
+};
+
+function showView() {
+    const name = location.hash === '#/analysis' ? 'analysis' : 'log';
+    Object.entries(views).forEach(([key, el]) => el.classList.toggle('hidden', key !== name));
+    document.querySelectorAll('.nav-tab').forEach((tab) => {
+        const active = tab.dataset.view === name;
+        tab.classList.toggle('active', active);
+    });
+    if (name === 'analysis' && exerciseSelect.value) {
+        updateChart(exerciseSelect.value);
+    }
 }
 
 function initCollapsibles() {
@@ -77,6 +96,7 @@ function clearAuth() {
     authCard.classList.remove('hidden');
     appShell.classList.add('hidden');
     workoutList.innerHTML = '';
+    lastAnalysis = null;
     clearChart();
 }
 
@@ -84,94 +104,154 @@ function clearChart() {
     d3.select(chartElement).selectAll('*').remove();
 }
 
-function renderChart(data, exerciseName) {
+function filterByRange(data) {
+    if (!rangeDays) return data;
+    const cutoff = new Date();
+    cutoff.setHours(0, 0, 0, 0);
+    cutoff.setDate(cutoff.getDate() - rangeDays);
+    const parse = d3.timeParse('%Y-%m-%d');
+    const keep = data.labels.map((label) => parse(label) >= cutoff);
+    return {
+        labels: data.labels.filter((_, i) => keep[i]),
+        volume: data.volume.filter((_, i) => keep[i]),
+        max_weight: data.max_weight.filter((_, i) => keep[i])
+    };
+}
+
+function updateRangeButtons() {
+    document.querySelectorAll('.range-btn').forEach((btn) => {
+        const active = Number(btn.dataset.days) === rangeDays;
+        btn.classList.toggle('active', active);
+    });
+}
+
+function renderChart(fullData, exerciseName) {
     clearChart();
+    lastAnalysis = fullData;
+    lastExercise = exerciseName;
+    const data = filterByRange(fullData);
 
     const parseDate = d3.timeParse('%Y-%m-%d');
-    const points = data.labels.map((label, i) => ({
-        date: parseDate(label),
-        value: Number(data.data[i])
-    })).filter((point) => point.date && Number.isFinite(point.value));
+    const sessions = data.labels.map((label, i) => ({
+        label,
+        volume: Number(data.volume[i]),
+        maxWeight: Number(data.max_weight[i])
+    }));
 
-    points.sort((a, b) => a.date - b.date);
-
-    // declare chart dimensions
     const svg = d3.select(chartElement);
     const rect = chartElement.getBoundingClientRect();
     const width = Math.max(320, Math.floor(rect.width || 320));
     const height = 280;
-    const margin = { top: 24, right: 16, bottom: 36, left: 52 };
+    const margin = { top: 44, right: 48, bottom: 36, left: 52 };
 
     svg.attr('viewBox', `0 0 ${width} ${height}`)
         .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    if (!points.length) {
+    if (!sessions.length) {
         svg.append('text')
             .attr('x', width / 2)
             .attr('y', height / 2)
             .attr('text-anchor', 'middle')
             .attr('fill', '#9CA3AF')
             .attr('font-size', 14)
-            .text('No data for this exercise yet.');
+            .text('No sessions in this period.');
         return;
     }
 
-    // declare x-axis as bar positions
-    const x = d3.scaleBand()
-        .domain(points.map((_, i) => i))
-        .range([margin.left, width - margin.right])
-        .padding(0.2);
+    const volumeColor = '#6366F1';
+    const weightColor = '#F59E0B';
+    const axisStyle = (g) => g
+        .call((sel) => sel.selectAll('text').attr('fill', '#9CA3AF'))
+        .call((sel) => sel.selectAll('line,path').attr('stroke', '#6B7280'));
 
-    const barWidth = Math.max(4, x.bandwidth());
- 
-    const maxY = d3.max(points, (d) => d.value) || 0;
-    const y = d3.scaleLinear()
-        .domain([0, maxY > 0 ? maxY * 1.1 : 1])
+    const x = d3.scaleBand()
+        .domain(sessions.map((d) => d.label))
+        .range([margin.left, width - margin.right])
+        .padding(0.25);
+    const yVolume = d3.scaleLinear()
+        .domain([0, (d3.max(sessions, (d) => d.volume) || 1) * 1.1])
+        .nice()
+        .range([height - margin.bottom, margin.top]);
+    const yWeight = d3.scaleLinear()
+        .domain([0, (d3.max(sessions, (d) => d.maxWeight) || 1) * 1.1])
         .nice()
         .range([height - margin.bottom, margin.top]);
 
     const labelFormat = d3.timeFormat('%b %d');
-    const xAxis = d3.axisBottom(x)
-        .tickValues(x.domain().filter((_, i, arr) => i % Math.ceil(arr.length / 6) === 0))
-        .tickFormat((i) => labelFormat(points[i].date));
-    const yAxis = d3.axisLeft(y).ticks(6);
-
+    const step = Math.ceil(sessions.length / 6);
     svg.append('g')
         .attr('transform', `translate(0,${height - margin.bottom})`)
-        .call(xAxis)
-        .call((g) => g.selectAll('text').attr('fill', '#9CA3AF'))
-        .call((g) => g.selectAll('line,path').attr('stroke', '#6B7280'));
+        .call(d3.axisBottom(x)
+            .tickValues(x.domain().filter((_, i) => i % step === 0))
+            .tickFormat((label) => labelFormat(parseDate(label))))
+        .call(axisStyle);
 
     svg.append('g')
         .attr('transform', `translate(${margin.left},0)`)
-        .call(yAxis)
-        .call((g) => g.selectAll('text').attr('fill', '#9CA3AF'))
-        .call((g) => g.selectAll('line,path').attr('stroke', '#6B7280'));
+        .call(d3.axisLeft(yVolume).ticks(6))
+        .call(axisStyle)
+        .call((g) => g.selectAll('text').attr('fill', volumeColor));
+
+    svg.append('g')
+        .attr('transform', `translate(${width - margin.right},0)`)
+        .call(d3.axisRight(yWeight).ticks(6))
+        .call(axisStyle)
+        .call((g) => g.selectAll('text').attr('fill', weightColor));
 
     svg.selectAll('.bar')
-        .data(points)
+        .data(sessions)
         .enter()
         .append('rect')
         .attr('class', 'bar')
-        .attr('x', (_, i) => (x(i) ?? margin.left) + (x.bandwidth() - barWidth) / 2)
-        .attr('y', (d) => y(d.value))
-        .attr('width', barWidth)
-        .attr('height', (d) => y(0) - y(d.value))
-        .attr('fill', '#3B82F6')
+        .attr('x', (d) => x(d.label))
+        .attr('y', (d) => yVolume(d.volume))
+        .attr('width', x.bandwidth())
+        .attr('height', (d) => yVolume(0) - yVolume(d.volume))
+        .attr('fill', volumeColor)
+        .attr('opacity', 0.8)
         .attr('rx', 3)
-        .attr('ry', 3);
+        .append('title')
+        .text((d) => `${d.label}: ${d.volume} kg total volume`);
+
+    const cx = (d) => x(d.label) + x.bandwidth() / 2;
+    svg.append('path')
+        .datum(sessions)
+        .attr('fill', 'none')
+        .attr('stroke', weightColor)
+        .attr('stroke-width', 2)
+        .attr('d', d3.line().x(cx).y((d) => yWeight(d.maxWeight)));
+
+    svg.selectAll('.dot')
+        .data(sessions)
+        .enter()
+        .append('circle')
+        .attr('class', 'dot')
+        .attr('cx', cx)
+        .attr('cy', (d) => yWeight(d.maxWeight))
+        .attr('r', 4)
+        .attr('fill', weightColor)
+        .append('title')
+        .text((d) => `${d.label}: max ${d.maxWeight} kg`);
 
     svg.append('text')
         .attr('x', margin.left)
         .attr('y', 14)
         .attr('fill', '#D1D5DB')
         .attr('font-size', 12)
-        .text(`Weight progression (bar chart): ${exerciseName}`);
+        .text(exerciseName);
+
+    const legend = svg.append('g').attr('transform', `translate(${margin.left},28)`);
+    legend.append('rect').attr('width', 10).attr('height', 10).attr('fill', volumeColor);
+    legend.append('text').attr('x', 14).attr('y', 9).attr('fill', '#9CA3AF').attr('font-size', 11)
+        .text('Volume (kg)');
+    legend.append('circle').attr('cx', 100).attr('cy', 5).attr('r', 4).attr('fill', weightColor);
+    legend.append('text').attr('x', 108).attr('y', 9).attr('fill', '#9CA3AF').attr('font-size', 11)
+        .text('Max weight (kg)');
 }
 
 function showMessage(message, isError = true) {
     messageText.textContent = message;
-    messageBox.className = `fixed bottom-4 right-4 text-white py-3 px-5 rounded-lg shadow-xl z-50 ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+    messageBox.className = `fixed bottom-4 right-4 text-white py-3 px-5 rounded-xl shadow-xl z-50 ${isError ? 'bg-red-600' : 'bg-emerald-600'}`;
     messageBox.classList.remove('hidden');
     setTimeout(() => messageBox.classList.add('hidden'), 3000);
 }
@@ -279,6 +359,43 @@ async function fetchWorkouts() {
     }
 }
 
+function renumberSetRows() {
+    const rows = setRows.querySelectorAll('.set-row');
+    rows.forEach((row, i) => {
+        row.querySelector('.set-label').textContent = `Set ${i + 1}`;
+        row.querySelector('.remove-set-btn').classList.toggle('invisible', rows.length === 1);
+    });
+}
+
+function addSetRow() {
+    const row = document.createElement('div');
+    row.className = 'set-row flex items-end gap-3';
+    const inputClass = 'form-input w-full';
+    row.innerHTML = `
+        <span class="set-label text-sm font-medium text-slate-300 w-12 pb-2"></span>
+        <div class="flex-1">
+            <label class="block text-xs text-gray-400 mb-1">Weight (kg)</label>
+            <input type="number" class="set-weight ${inputClass}" step="0.5" min="0" placeholder="e.g., 60" required>
+        </div>
+        <div class="flex-1">
+            <label class="block text-xs text-gray-400 mb-1">Reps</label>
+            <input type="number" class="set-reps ${inputClass}" min="1" placeholder="e.g., 5" required>
+        </div>
+        <button type="button" class="remove-set-btn text-gray-400 hover:text-red-500 text-xl pb-1 px-1" aria-label="Remove set">&times;</button>
+    `;
+    row.querySelector('.remove-set-btn').addEventListener('click', () => {
+        row.remove();
+        renumberSetRows();
+    });
+    setRows.appendChild(row);
+    renumberSetRows();
+}
+
+function resetSetRows() {
+    setRows.innerHTML = '';
+    addSetRow();
+}
+
 async function handleFormSubmit(event) {
     event.preventDefault();
     if (isOffline) {
@@ -288,27 +405,29 @@ async function handleFormSubmit(event) {
 
     const workout = {
         exercise: exerciseInput.value,
-        weight: parseFloat(weightInput.value),
-        sets: parseInt(setsInput.value, 10),
-        reps: parseInt(repsInput.value, 10)
+        sets: [...setRows.querySelectorAll('.set-row')].map((row) => ({
+            weight: parseFloat(row.querySelector('.set-weight').value),
+            reps: parseInt(row.querySelector('.set-reps').value, 10)
+        }))
     };
 
     logButton.disabled = true;
     logButton.textContent = 'Logging...';
 
     try {
-        const response = await apiFetch('/workouts', {
+        const response = await apiFetch('/workouts/batch', {
             method: 'POST',
             body: JSON.stringify(workout)
         });
-        const newWorkout = await response.json();
+        const newWorkouts = await response.json();
         if (!response.ok) throw new Error('Failed to log workout');
 
         if (workoutList.querySelector('p')) {
             workoutList.innerHTML = '';
         }
-        renderWorkout(newWorkout, true);
+        [...newWorkouts].reverse().forEach((entry) => renderWorkout(entry, true));
         form.reset();
+        resetSetRows();
         showMessage('Workout logged successfully.', false);
         loadExerciseDropdown();
     } catch {
@@ -400,7 +519,7 @@ async function updateChart(exerciseName) {
 
 function renderWorkout(workout, prepend = false) {
     const workoutCard = document.createElement('div');
-    workoutCard.className = 'bg-gray-700 p-4 rounded-lg flex justify-between items-center transition-all duration-300';
+    workoutCard.className = 'workout-card';
     const date = new Date(workout.log_date * 1000);
     const formattedDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     const formattedTime = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -408,7 +527,7 @@ function renderWorkout(workout, prepend = false) {
     workoutCard.innerHTML = `
         <div>
             <h3 class="text-lg font-semibold text-white">${workout.exercise_name}</h3>
-            <p class="text-sm text-gray-300">${workout.sets} sets &times; ${workout.reps} reps @ ${workout.weight_kg} kg</p>
+            <p class="text-sm text-gray-300">${workout.sets} ${workout.sets === 1 ? 'set' : 'sets'} &times; ${workout.reps} reps @ ${workout.weight_kg} kg</p>
             <p class="text-xs text-gray-400 mt-1">${formattedDate}, ${formattedTime}</p>
         </div>
         <button class="delete-btn text-gray-400 hover:text-red-500 transition-all p-1 rounded-full">
@@ -448,11 +567,23 @@ logoutBtn.addEventListener('click', () => {
     showMessage('Logged out.', false);
 });
 form.addEventListener('submit', handleFormSubmit);
+addSetBtn.addEventListener('click', addSetRow);
+resetSetRows();
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
+document.querySelectorAll('.range-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        rangeDays = Number(btn.dataset.days);
+        updateRangeButtons();
+        if (lastAnalysis) renderChart(lastAnalysis, lastExercise);
+    });
+});
+updateRangeButtons();
 exerciseSelect.addEventListener('change', (e) => updateChart(e.target.value));
 
+window.addEventListener('hashchange', showView);
 initCollapsibles();
+showView();
 updateOnlineStatus();
 const existingToken = getToken();
 const existingEmail = localStorage.getItem(EMAIL_KEY);

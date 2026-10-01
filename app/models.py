@@ -20,6 +20,24 @@ class WorkoutCreate(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class SetCreate(BaseModel):
+    weight_kg: float = Field(validation_alias=AliasChoices("weight", "weight_kg"))
+    reps: int = Field(ge=1)
+
+    model_config = {"populate_by_name": True}
+
+
+class WorkoutBatchCreate(BaseModel):
+    """One exercise with one or more sets, each with its own weight and reps."""
+
+    exercise_name: str = Field(
+        validation_alias=AliasChoices("exercise", "exercise_name")
+    )
+    sets: List[SetCreate] = Field(min_length=1)
+
+    model_config = {"populate_by_name": True}
+
+
 class WorkoutOut(BaseModel):
     id: int
     exercise_name: str
@@ -55,4 +73,5 @@ class AuthResponse(BaseModel):
 
 class AnalysisData(BaseModel):
     labels: List[str]
-    data: List[float]
+    volume: List[float]
+    max_weight: List[float]

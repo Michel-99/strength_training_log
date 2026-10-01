@@ -38,6 +38,14 @@ class User(Base):
     )
 
 
+class Excercise(Base):
+    __tablename__ = "excerices"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    excercise_name: Mapped[str] = mapped_column(String(120))
+    body_region: Mapped[str] = mapped_column(String(40))
+
+
 class db_manager:
     def __init__(self, db_url: str = DEFAULT_DB_URL) -> None:
         self.DATABASE_URL = db_url

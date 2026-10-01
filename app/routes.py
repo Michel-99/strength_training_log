@@ -49,6 +49,14 @@ def create_workout(
     return service.add_workout(workout, user.id)
 
 
+@router.post("/workouts/batch", response_model=List[models.WorkoutOut], status_code=201)
+def create_workout_sets(
+    payload: models.WorkoutBatchCreate, user: User = Depends(get_current_user)
+):
+    """Logs one exercise with several sets (each with its own weight and reps)."""
+    return service.add_workout_sets(payload, user.id)
+
+
 @router.get("/workouts", response_model=List[models.WorkoutOut])
 def list_workouts(user: User = Depends(get_current_user)):
     """Returns all workouts ordered by most recent first."""

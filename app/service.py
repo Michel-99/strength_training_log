@@ -6,7 +6,7 @@ from jose import jwt
 from passlib.context import CryptContext
 
 from app.db import db_manager, Workout, User
-from app.models import WorkoutCreate, AuthRegister, AuthLogin
+from app.models import WorkoutCreate, WorkoutBatchCreate, AuthRegister, AuthLogin
 
 _db = db_manager()
 _pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
@@ -77,8 +77,9 @@ def get_user_from_token(token: str) -> User | None:
 def add_workout(data: WorkoutCreate, user_id: int) -> Workout:
     session = _db.get_session()
     try:
+        exercise_name = data.exercise_name.strip()
         entry = Workout(
-            exercise_name=data.exercise_name,
+            exercise_name=exercise_name,
             weight_kg=data.weight_kg,
             sets=data.sets,
             reps=data.reps,
@@ -88,6 +89,30 @@ def add_workout(data: WorkoutCreate, user_id: int) -> Workout:
         session.commit()
         session.refresh(entry)
         return entry
+    finally:
+        session.close()
+
+
+def add_workout_sets(data: WorkoutBatchCreate, user_id: int) -> List[Workout]:
+    """Store each set as its own entry (sets=1) in a single transaction."""
+    session = _db.get_session()
+    try:
+        exercise_name = data.exercise_name.strip()
+        entries = [
+            Workout(
+                exercise_name=exercise_name,
+                weight_kg=s.weight_kg,
+                sets=1,
+                reps=s.reps,
+                user_id=user_id,
+            )
+            for s in data.sets
+        ]
+        session.add_all(entries)
+        session.commit()
+        for entry in entries:
+            session.refresh(entry)
+        return entries
     finally:
         session.close()
 
@@ -138,6 +163,7 @@ def get_exercises(user_id: int) -> List[str]:
 
 
 def get_analysis_data(exercise: str, user_id: int) -> Dict:
+    """Aggregate logged sets per session (calendar day) for one exercise."""
     session = _db.get_session()
     try:
         rows = (
@@ -146,8 +172,18 @@ def get_analysis_data(exercise: str, user_id: int) -> Dict:
             .order_by(Workout.created_at.asc())
             .all()
         )
-        labels = [r.created_at.strftime("%Y-%m-%d") for r in rows]
-        data = [r.weight_kg for r in rows]
-        return {"labels": labels, "data": data}
+        sessions: Dict[str, Dict[str, float]] = {}
+        for r in rows:
+            day = sessions.setdefault(
+                r.created_at.strftime("%Y-%m-%d"), {"volume": 0.0, "max_weight": 0.0}
+            )
+            day["volume"] += r.weight_kg * r.sets * r.reps
+            day["max_weight"] = max(day["max_weight"], r.weight_kg)
+        labels = list(sessions)
+        return {
+            "labels": labels,
+            "volume": [sessions[d]["volume"] for d in labels],
+            "max_weight": [sessions[d]["max_weight"] for d in labels],
+        }
     finally:
         session.close()
