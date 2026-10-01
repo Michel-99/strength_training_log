@@ -1,7 +1,142 @@
 @import url('https://rsms.me/inter/inter.css');
 
+:root {
+    --accent: #6366f1;
+    --accent-2: #8b5cf6;
+}
+
 body {
     font-family: 'Inter', sans-serif;
+    background-color: #0b1020;
+    background-image:
+        radial-gradient(60rem 40rem at 10% -10%, rgba(99, 102, 241, 0.22), transparent 60%),
+        radial-gradient(50rem 35rem at 100% 0%, rgba(139, 92, 246, 0.16), transparent 60%);
+    background-attachment: fixed;
+}
+
+.gradient-text {
+    background: linear-gradient(90deg, #a5b4fc, #c4b5fd 50%, #f0abfc);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.25rem;
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    overflow: hidden;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+    font-weight: 600;
+    padding: 0.55rem 1rem;
+    border-radius: 0.85rem;
+    color: #fff;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 20px -8px rgba(99, 102, 241, 0.7);
+}
+
+.btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -8px rgba(99, 102, 241, 0.8);
+}
+
+.btn-secondary,
+.btn-ghost {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-secondary:hover,
+.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.segmented {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.9rem;
+}
+
+.nav-tab,
+.range-btn {
+    flex: 1;
+    text-align: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.45rem 0.5rem;
+    border-radius: 0.65rem;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.nav-tab:hover,
+.range-btn:hover {
+    color: #fff;
+}
+
+.nav-tab.active,
+.range-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 6px 16px -6px rgba(99, 102, 241, 0.7);
+}
+
+.chart-box {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.workout-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.workout-card:hover {
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.add-set-btn {
+    padding: 0.55rem 1rem;
+    border: 1px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 0.85rem;
+    color: #cbd5e1;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.add-set-btn:hover {
+    border-color: var(--accent);
+    color: #fff;
+    background: rgba(99, 102, 241, 0.1);
 }
 
 ::-webkit-scrollbar {
@@ -18,12 +153,27 @@ body {
 }
 
 .form-input {
-    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    color: #fff;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.form-input::placeholder {
+    color: #64748b;
 }
 
 .form-input:focus {
-    box-shadow: 0 0 0 2px #3b82f6;
-    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.35);
+    border-color: var(--accent);
+}
+
+select.form-input option {
+    background: #111827;
+    color: #fff;
 }
 
 .section-content {

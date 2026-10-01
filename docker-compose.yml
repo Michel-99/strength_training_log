@@ -31,6 +31,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-strength_user}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-strength_log}
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-this-secret}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-10080}
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/app --reload-dir /app/frontend --reload-dir /app
+    volumes:
+      - ./:/app
     ports:
       - "8000:8000"
 
