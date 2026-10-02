@@ -5,6 +5,7 @@ requires-python = ">=3.11"
 dependencies = [
     "argon2-cffi>=25.1.0",
     "fastapi==0.121.0",
+    "httpx>=0.28.1",
     "passlib[bcrypt]>=1.7.4",
     "psycopg2-binary>=2.9.13",
     "pydantic>=2.0",

@@ -127,6 +127,17 @@
 
             <div id="view-analysis" class="hidden">
                 <div class="px-6 py-4">
+                    <div id="polar-card" class="chart-box flex items-center justify-between gap-3 mb-5">
+                        <div>
+                            <p class="font-semibold text-white">Polar</p>
+                            <p id="polar-status" class="text-xs text-slate-400">Checking...</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="polar-sync-btn" class="btn-secondary text-sm hidden">Sync now</button>
+                            <button type="button" id="polar-connect-btn" class="btn-primary text-sm hidden">Connect</button>
+                        </div>
+                    </div>
+
                     <h2 class="text-xl font-semibold text-white mb-3">Progress Analysis</h2>
                     <label for="exercise-select" class="block text-sm font-medium text-slate-300 mb-1">Select
                         Exercise</label>
@@ -158,7 +169,7 @@
         class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-xl shadow-xl z-50">
         <span id="message-text"></span>
     </div>
-    <script src="/app.js?v=20261006"></script>
+    <script src="/app.js?v=20261007"></script>
 </body>
 
 </html>

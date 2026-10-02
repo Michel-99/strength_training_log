@@ -88,6 +88,8 @@ function setAuth(token, email) {
     appShell.classList.remove('hidden');
     fetchWorkouts();
     loadExerciseDropdown();
+    loadPolarStatus();
+    handlePolarRedirect();
 }
 
 function clearAuth() {
@@ -516,6 +518,74 @@ async function updateChart(exerciseName) {
         showMessage('Failed to load chart data.', true);
     }
 }
+
+const polarStatus = document.getElementById('polar-status');
+const polarConnectBtn = document.getElementById('polar-connect-btn');
+const polarSyncBtn = document.getElementById('polar-sync-btn');
+
+async function loadPolarStatus() {
+    if (isOffline) return;
+    try {
+        const response = await apiFetch('/polar/status');
+        if (!response.ok) throw new Error();
+        const status = await response.json();
+        polarConnectBtn.classList.toggle('hidden', !status.configured || status.connected);
+        polarSyncBtn.classList.toggle('hidden', !status.connected);
+        if (!status.configured) {
+            polarStatus.textContent = 'Not set up on the server yet.';
+        } else if (status.connected) {
+            polarStatus.textContent = status.last_synced_at
+                ? `Connected. Last sync ${new Date(status.last_synced_at).toLocaleString()}`
+                : 'Connected.';
+        } else {
+            polarStatus.textContent = 'Not connected.';
+        }
+    } catch {
+        polarStatus.textContent = 'Could not check Polar status.';
+    }
+}
+
+async function connectPolar() {
+    try {
+        const response = await apiFetch('/polar/connect-url');
+        const data = await response.json();
+        if (!response.ok) throw new Error();
+        window.location.href = data.url;
+    } catch {
+        showMessage('Could not start the Polar connection.', true);
+    }
+}
+
+async function syncPolar() {
+    polarSyncBtn.disabled = true;
+    polarSyncBtn.textContent = 'Syncing...';
+    try {
+        const response = await apiFetch('/polar/sync', { method: 'POST' });
+        const counts = await response.json();
+        if (!response.ok) throw new Error();
+        showMessage(
+            `Synced ${counts.exercises} sessions, ${counts.sleep} nights, ${counts.recovery} recovery days.`,
+            false
+        );
+        loadPolarStatus();
+    } catch {
+        showMessage('Polar sync failed.', true);
+    } finally {
+        polarSyncBtn.disabled = false;
+        polarSyncBtn.textContent = 'Sync now';
+    }
+}
+
+function handlePolarRedirect() {
+    const result = new URLSearchParams(location.search).get('polar');
+    if (!result) return;
+    history.replaceState(null, '', location.pathname + location.hash);
+    if (result === 'connected') showMessage('Polar connected and synced.', false);
+    else showMessage('Polar connection failed or was cancelled.', true);
+}
+
+polarConnectBtn.addEventListener('click', connectPolar);
+polarSyncBtn.addEventListener('click', syncPolar);
 
 function renderWorkout(workout, prepend = false) {
     const workoutCard = document.createElement('div');
