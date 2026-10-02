@@ -5,7 +5,14 @@ from typing import List, Dict
 from jose import jwt
 from passlib.context import CryptContext
 
-from app.db import db_manager, Workout, User
+from app.db import (
+    db_manager,
+    Workout,
+    User,
+    PolarExercise,
+    PolarRecovery,
+    PolarSleep,
+)
 from app.models import WorkoutCreate, WorkoutBatchCreate, AuthRegister, AuthLogin
 
 _db = db_manager()
@@ -185,5 +192,80 @@ def get_analysis_data(exercise: str, user_id: int) -> Dict:
             "volume": [sessions[d]["volume"] for d in labels],
             "max_weight": [sessions[d]["max_weight"] for d in labels],
         }
+    finally:
+        session.close()
+
+
+def get_overview(user_id: int, days: int = 30) -> Dict:
+    """Per-day strength, endurance and recovery numbers for the last `days` days."""
+    today = datetime.now(timezone.utc).date()
+    start = today - timedelta(days=days - 1)
+    start_dt = datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc)
+
+    rows = {
+        (start + timedelta(days=i)).isoformat(): {
+            "date": (start + timedelta(days=i)).isoformat(),
+            "strength_volume": 0.0,
+            "strength_sets": 0,
+            "endurance_minutes": 0.0,
+            "endurance_km": 0.0,
+            "endurance_load": 0.0,
+            "ans_charge": None,
+            "recharge_status": None,
+            "hrv": None,
+            "sleep_score": None,
+        }
+        for i in range(days)
+    }
+
+    session = _db.get_session()
+    try:
+        workouts = (
+            session.query(Workout)
+            .filter(Workout.user_id == user_id, Workout.created_at >= start_dt)
+            .all()
+        )
+        for w in workouts:
+            day = rows.get(w.created_at.strftime("%Y-%m-%d"))
+            if day:
+                day["strength_volume"] += w.weight_kg * w.sets * w.reps
+                day["strength_sets"] += w.sets
+
+        # Strength sessions recorded on the watch are not counted as endurance.
+        exercises = (
+            session.query(PolarExercise)
+            .filter(PolarExercise.user_id == user_id, PolarExercise.start_time >= start_dt)
+            .all()
+        )
+        for e in exercises:
+            if "STRENGTH" in (e.sport or "").upper():
+                continue
+            day = rows.get(e.start_time.strftime("%Y-%m-%d"))
+            if day:
+                day["endurance_minutes"] += (e.duration_seconds or 0) / 60
+                day["endurance_km"] += (e.distance_m or 0) / 1000
+                day["endurance_load"] += e.training_load or 0
+
+        for r in (
+            session.query(PolarRecovery)
+            .filter(PolarRecovery.user_id == user_id, PolarRecovery.day >= start)
+            .all()
+        ):
+            day = rows.get(r.day.isoformat())
+            if day:
+                day["ans_charge"] = r.ans_charge
+                day["recharge_status"] = r.recharge_status
+                day["hrv"] = r.avg_hrv
+
+        for n in (
+            session.query(PolarSleep)
+            .filter(PolarSleep.user_id == user_id, PolarSleep.day >= start)
+            .all()
+        ):
+            day = rows.get(n.day.isoformat())
+            if day:
+                day["sleep_score"] = n.sleep_score
+
+        return {"days": list(rows.values())}
     finally:
         session.close()

@@ -54,12 +54,13 @@ function toggleSection(button) {
 }
 
 const views = {
+    overview: document.getElementById('view-overview'),
     log: document.getElementById('view-log'),
     analysis: document.getElementById('view-analysis')
 };
 
 function showView() {
-    const name = location.hash === '#/analysis' ? 'analysis' : 'log';
+    const name = { '#/log': 'log', '#/analysis': 'analysis' }[location.hash] || 'overview';
     Object.entries(views).forEach(([key, el]) => el.classList.toggle('hidden', key !== name));
     document.querySelectorAll('.nav-tab').forEach((tab) => {
         const active = tab.dataset.view === name;
@@ -67,6 +68,9 @@ function showView() {
     });
     if (name === 'analysis' && exerciseSelect.value) {
         updateChart(exerciseSelect.value);
+    }
+    if (name === 'overview' && getToken()) {
+        loadOverview();
     }
 }
 
@@ -90,6 +94,7 @@ function setAuth(token, email) {
     loadExerciseDropdown();
     loadPolarStatus();
     handlePolarRedirect();
+    if (!views.overview.classList.contains('hidden')) loadOverview();
 }
 
 function clearAuth() {
@@ -121,7 +126,7 @@ function filterByRange(data) {
 }
 
 function updateRangeButtons() {
-    document.querySelectorAll('.range-btn').forEach((btn) => {
+    document.querySelectorAll('#range-filter .range-btn').forEach((btn) => {
         const active = Number(btn.dataset.days) === rangeDays;
         btn.classList.toggle('active', active);
     });
@@ -587,6 +592,129 @@ function handlePolarRedirect() {
 polarConnectBtn.addEventListener('click', connectPolar);
 polarSyncBtn.addEventListener('click', syncPolar);
 
+let overviewDays = 30;
+
+function drawMiniChart(svgEl, days, accessor, { type, color, unit, symmetric = false }) {
+    const svg = d3.select(svgEl);
+    svg.selectAll('*').remove();
+    const width = Math.max(300, Math.floor(svgEl.getBoundingClientRect().width || 300));
+    const height = 150;
+    const margin = { top: 8, right: 8, bottom: 22, left: 40 };
+    svg.attr('viewBox', `0 0 ${width} ${height}`).attr('preserveAspectRatio', 'xMidYMid meet');
+
+    const values = days.map(accessor);
+    if (!values.some((v) => v !== null && v !== 0)) {
+        svg.append('text').attr('x', width / 2).attr('y', height / 2)
+            .attr('text-anchor', 'middle').attr('fill', '#64748b').attr('font-size', 12)
+            .text('No data in this period.');
+        return;
+    }
+
+    const x = d3.scaleBand().domain(days.map((d) => d.date))
+        .range([margin.left, width - margin.right]).padding(0.25);
+    const extent = d3.extent(values.filter((v) => v !== null));
+    const max = Math.max(Math.abs(extent[0]), Math.abs(extent[1]), 1);
+    const y = d3.scaleLinear()
+        .domain(symmetric ? [-max * 1.1, max * 1.1] : [0, max * 1.1])
+        .nice().range([height - margin.bottom, margin.top]);
+
+    const parse = d3.timeParse('%Y-%m-%d');
+    const fmt = d3.timeFormat('%b %d');
+    const step = Math.ceil(days.length / 5);
+    const axisStyle = (g) => g
+        .call((sel) => sel.selectAll('text').attr('fill', '#94a3b8'))
+        .call((sel) => sel.selectAll('line,path').attr('stroke', '#475569'));
+
+    svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).tickValues(x.domain().filter((_, i) => i % step === 0))
+            .tickFormat((d) => fmt(parse(d))).tickSizeOuter(0))
+        .call(axisStyle);
+    svg.append('g').attr('transform', `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y).ticks(4).tickSizeOuter(0))
+        .call(axisStyle);
+    if (symmetric) {
+        svg.append('line').attr('x1', margin.left).attr('x2', width - margin.right)
+            .attr('y1', y(0)).attr('y2', y(0)).attr('stroke', '#475569').attr('stroke-dasharray', '3 3');
+    }
+
+    const points = days.map((d, i) => ({ date: d.date, value: values[i] }));
+    if (type === 'bar') {
+        svg.selectAll('rect').data(points.filter((p) => p.value)).enter().append('rect')
+            .attr('x', (p) => x(p.date)).attr('y', (p) => y(p.value))
+            .attr('width', x.bandwidth()).attr('height', (p) => y(0) - y(p.value))
+            .attr('fill', color).attr('rx', 2)
+            .append('title').text((p) => `${p.date}: ${Math.round(p.value)} ${unit}`);
+    } else {
+        const cx = (p) => x(p.date) + x.bandwidth() / 2;
+        svg.append('path').datum(points)
+            .attr('fill', 'none').attr('stroke', color).attr('stroke-width', 2)
+            .attr('d', d3.line().defined((p) => p.value !== null).x(cx).y((p) => y(p.value)));
+        svg.selectAll('circle').data(points.filter((p) => p.value !== null)).enter().append('circle')
+            .attr('cx', cx).attr('cy', (p) => y(p.value)).attr('r', 3).attr('fill', color)
+            .append('title').text((p) => `${p.date}: ${p.value} ${unit}`);
+    }
+}
+
+function renderOverviewTiles(days) {
+    const last7 = days.slice(-7);
+    const sum = (key) => last7.reduce((acc, d) => acc + d[key], 0);
+    const sessions = last7.filter((d) => d.strength_volume > 0).length;
+    const enduranceHours = sum('endurance_minutes') / 60;
+    const charges = last7.map((d) => d.ans_charge).filter((v) => v !== null);
+    const sleeps = last7.map((d) => d.sleep_score).filter((v) => v !== null);
+    const avg = (arr) => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '–');
+
+    const tiles = [
+        ['Strength', `${sessions}`, `sessions · ${Math.round(sum('strength_volume')).toLocaleString()} kg`],
+        ['Endurance', `${enduranceHours.toFixed(1)} h`, `${sum('endurance_km').toFixed(1)} km`],
+        ['Recovery', avg(charges), `ANS charge · sleep ${avg(sleeps)}`]
+    ];
+    document.getElementById('overview-tiles').innerHTML = tiles.map(([title, big, small]) => `
+        <div class="chart-box" style="padding:0.75rem">
+            <p class="text-xs text-slate-400">${title}</p>
+            <p class="text-xl font-bold text-white">${big}</p>
+            <p class="text-xs text-slate-400">${small}</p>
+        </div>`).join('') ;
+}
+
+async function loadOverview() {
+    if (isOffline) return;
+    try {
+        const response = await apiFetch(`/overview?days=${overviewDays}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error();
+        const days = data.days;
+        renderOverviewTiles(days);
+        drawMiniChart(document.getElementById('ov-strength'), days, (d) => d.strength_volume,
+            { type: 'bar', color: '#6366F1', unit: 'kg' });
+        drawMiniChart(document.getElementById('ov-endurance'), days, (d) => d.endurance_minutes,
+            { type: 'bar', color: '#F59E0B', unit: 'min' });
+        drawMiniChart(document.getElementById('ov-recovery'), days, (d) => d.ans_charge,
+            { type: 'line', color: '#34D399', unit: '', symmetric: true });
+        const hasPolar = days.some((d) => d.endurance_minutes || d.ans_charge !== null);
+        document.getElementById('overview-hint').textContent = hasPolar
+            ? ''
+            : 'No Polar data yet. Connect Polar in the Analysis tab to see endurance and recovery.';
+    } catch {
+        showMessage('Failed to load overview.', true);
+    }
+}
+
+function updateOverviewRangeButtons() {
+    document.querySelectorAll('#overview-range .range-btn').forEach((btn) => {
+        btn.classList.toggle('active', Number(btn.dataset.days) === overviewDays);
+    });
+}
+
+document.querySelectorAll('#overview-range .range-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+        overviewDays = Number(btn.dataset.days);
+        updateOverviewRangeButtons();
+        loadOverview();
+    });
+});
+updateOverviewRangeButtons();
+
 function renderWorkout(workout, prepend = false) {
     const workoutCard = document.createElement('div');
     workoutCard.className = 'workout-card';
@@ -641,7 +769,7 @@ addSetBtn.addEventListener('click', addSetRow);
 resetSetRows();
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
-document.querySelectorAll('.range-btn').forEach((btn) => {
+document.querySelectorAll('#range-filter .range-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         rangeDays = Number(btn.dataset.days);
         updateRangeButtons();
