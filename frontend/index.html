@@ -59,13 +59,45 @@
             </div>
 
             <nav class="px-4 pt-4"><div class="segmented">
-                <a href="#/" data-view="log"
+                <a href="#/" data-view="overview"
+                    class="nav-tab">Overview</a>
+                <a href="#/log" data-view="log"
                     class="nav-tab">Log</a>
                 <a href="#/analysis" data-view="analysis"
                     class="nav-tab">Analysis</a>
             </div></nav>
 
-            <div id="view-log">
+            <div id="view-overview">
+                <div class="px-6 py-4">
+                    <h2 class="text-xl font-semibold text-white mb-3">Overview</h2>
+                    <div id="overview-range" class="segmented">
+                        <button type="button" data-days="14" class="range-btn">2 weeks</button>
+                        <button type="button" data-days="30" class="range-btn">1 month</button>
+                        <button type="button" data-days="60" class="range-btn">2 months</button>
+                    </div>
+
+                    <div id="overview-tiles" class="grid grid-cols-3 gap-3 mt-4"></div>
+
+                    <div class="mt-4 chart-box">
+                        <p class="text-sm font-semibold text-white">Strength</p>
+                        <p class="text-xs text-slate-400 mb-1">Daily volume (kg)</p>
+                        <svg id="ov-strength" class="w-full" style="height:150px"></svg>
+                    </div>
+                    <div class="mt-3 chart-box">
+                        <p class="text-sm font-semibold text-white">Endurance</p>
+                        <p class="text-xs text-slate-400 mb-1">Daily training time (min)</p>
+                        <svg id="ov-endurance" class="w-full" style="height:150px"></svg>
+                    </div>
+                    <div class="mt-3 chart-box">
+                        <p class="text-sm font-semibold text-white">Recovery</p>
+                        <p class="text-xs text-slate-400 mb-1">Nightly ANS charge</p>
+                        <svg id="ov-recovery" class="w-full" style="height:150px"></svg>
+                    </div>
+                    <p id="overview-hint" class="text-xs text-slate-400 mt-3"></p>
+                </div>
+            </div>
+
+            <div id="view-log" class="hidden">
             <div class="border-b border-white/10">
                 <button type="button"
                     class="section-toggle w-full flex items-center justify-between px-6 py-4 text-left text-white"
@@ -169,7 +201,7 @@
         class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-xl shadow-xl z-50">
         <span id="message-text"></span>
     </div>
-    <script src="/app.js?v=20261007"></script>
+    <script src="/app.js?v=20261008"></script>
 </body>
 
 </html>

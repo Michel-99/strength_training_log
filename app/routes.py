@@ -115,6 +115,12 @@ def analysis(exercise: str, user: User = Depends(get_current_user)):
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/overview")
+def overview(days: int = 30, user: User = Depends(get_current_user)):
+    """Strength, endurance and recovery per day for the overview page."""
+    return service.get_overview(user.id, max(1, min(days, 90)))
+
+
 # --- Polar ---
 
 
