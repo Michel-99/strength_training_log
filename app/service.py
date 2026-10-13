@@ -111,9 +111,11 @@ def add_workout_sets(data: WorkoutBatchCreate, user_id: int) -> List[Workout]:
                 weight_kg=s.weight_kg,
                 sets=1,
                 reps=s.reps,
+                set_number=i,
+                rest_seconds=s.rest_seconds,
                 user_id=user_id,
             )
-            for s in data.sets
+            for i, s in enumerate(data.sets, start=1)
         ]
         session.add_all(entries)
         session.commit()

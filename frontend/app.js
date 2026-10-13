@@ -103,6 +103,7 @@ function clearAuth() {
     authCard.classList.remove('hidden');
     appShell.classList.add('hidden');
     workoutList.innerHTML = '';
+    allWorkouts = [];
     lastAnalysis = null;
     clearChart();
 }
@@ -354,11 +355,8 @@ async function fetchWorkouts() {
         const workouts = await response.json();
         if (!response.ok) throw new Error('Failed to fetch workouts');
 
-        if (workouts.length === 0) {
-            workoutList.innerHTML = '<p class="text-center text-gray-400">No workouts logged yet. Get started!</p>';
-        } else {
-            workouts.forEach(renderWorkout);
-        }
+        allWorkouts = workouts;
+        renderHistory();
     } catch {
         workoutList.innerHTML = '<p class="text-center text-red-400">Failed to load history.</p>';
     } finally {
@@ -379,7 +377,7 @@ function addSetRow() {
     row.className = 'set-row flex items-end gap-3';
     const inputClass = 'form-input w-full';
     row.innerHTML = `
-        <span class="set-label text-sm font-medium text-slate-300 w-12 pb-2"></span>
+        <span class="set-label text-sm font-medium text-slate-300 w-14 pb-2"></span>
         <div class="flex-1">
             <label class="block text-xs text-gray-400 mb-1">Weight (kg)</label>
             <input type="number" class="set-weight ${inputClass}" step="0.5" min="0" placeholder="e.g., 60" required>
@@ -388,9 +386,14 @@ function addSetRow() {
             <label class="block text-xs text-gray-400 mb-1">Reps</label>
             <input type="number" class="set-reps ${inputClass}" min="1" placeholder="e.g., 5" required>
         </div>
+        <div class="flex-1">
+            <label class="block text-xs text-gray-400 mb-1">Rest (s)</label>
+            <input type="number" class="set-rest ${inputClass}" min="0" placeholder="auto">
+        </div>
         <button type="button" class="remove-set-btn text-gray-400 hover:text-red-500 text-xl pb-1 px-1" aria-label="Remove set">&times;</button>
     `;
     row.querySelector('.remove-set-btn').addEventListener('click', () => {
+        if (row === currentSetRow) endSetTimer(false);
         row.remove();
         renumberSetRows();
     });
@@ -403,6 +406,104 @@ function resetSetRows() {
     addSetRow();
 }
 
+// --- Set / rest timer ---------------------------------------------------
+// lastSetDoneAt survives reloads and form submits, so the rest between the last
+// set of one exercise and the first set of the next is measured too.
+const LAST_DONE_KEY = 'strength_log_last_set_done';
+const MAX_REST_MS = 20 * 60 * 1000; // longer gaps are treated as a new session
+
+const restLabel = document.getElementById('rest-label');
+const restTime = document.getElementById('rest-time');
+const setToggleBtn = document.getElementById('set-toggle-btn');
+const restResetBtn = document.getElementById('rest-reset-btn');
+
+let currentSetRow = null;
+let setStartedAt = null;
+
+function formatClock(totalSeconds) {
+    const seconds = Math.max(0, Math.round(totalSeconds));
+    return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+function getLastDoneAt() {
+    try {
+        const value = Number(localStorage.getItem(LAST_DONE_KEY));
+        return value > 0 ? value : null;
+    } catch {
+        return null;
+    }
+}
+
+function setLastDoneAt(timestamp) {
+    try {
+        if (timestamp) localStorage.setItem(LAST_DONE_KEY, String(timestamp));
+        else localStorage.removeItem(LAST_DONE_KEY);
+    } catch {
+        // storage unavailable: timer still works until reload
+    }
+}
+
+function updateRestBar() {
+    const lastDoneAt = getLastDoneAt();
+    if (currentSetRow) {
+        restLabel.textContent = 'Set in progress';
+        restTime.textContent = formatClock((Date.now() - setStartedAt) / 1000);
+        setToggleBtn.textContent = 'Done';
+    } else if (lastDoneAt) {
+        restLabel.textContent = 'Resting';
+        restTime.textContent = formatClock((Date.now() - lastDoneAt) / 1000);
+        setToggleBtn.textContent = 'Start set';
+    } else {
+        restLabel.textContent = 'Ready';
+        restTime.textContent = '\u2013';
+        setToggleBtn.textContent = 'Start set';
+    }
+    restResetBtn.classList.toggle('hidden', !lastDoneAt && !currentSetRow);
+}
+
+function startSet() {
+    let row = [...setRows.querySelectorAll('.set-row')].find((r) => !r.classList.contains('done'));
+    if (!row) {
+        addSetRow();
+        row = setRows.lastElementChild;
+    }
+
+    const lastDoneAt = getLastDoneAt();
+    const restInput = row.querySelector('.set-rest');
+    if (lastDoneAt && restInput.value === '') {
+        const elapsed = Date.now() - lastDoneAt;
+        if (elapsed <= MAX_REST_MS) restInput.value = Math.round(elapsed / 1000);
+    }
+
+    row.classList.add('started');
+    currentSetRow = row;
+    setStartedAt = Date.now();
+    updateRestBar();
+}
+
+function endSetTimer(markDone) {
+    if (currentSetRow) {
+        currentSetRow.classList.remove('started');
+        if (markDone) currentSetRow.classList.add('done');
+    }
+    currentSetRow = null;
+    setStartedAt = null;
+    if (markDone) setLastDoneAt(Date.now());
+    updateRestBar();
+}
+
+setToggleBtn.addEventListener('click', () => {
+    if (currentSetRow) endSetTimer(true);
+    else startSet();
+});
+restResetBtn.addEventListener('click', () => {
+    endSetTimer(false);
+    setLastDoneAt(null);
+    updateRestBar();
+});
+setInterval(updateRestBar, 1000);
+updateRestBar();
+
 async function handleFormSubmit(event) {
     event.preventDefault();
     if (isOffline) {
@@ -414,7 +515,10 @@ async function handleFormSubmit(event) {
         exercise: exerciseInput.value,
         sets: [...setRows.querySelectorAll('.set-row')].map((row) => ({
             weight: parseFloat(row.querySelector('.set-weight').value),
-            reps: parseInt(row.querySelector('.set-reps').value, 10)
+            reps: parseInt(row.querySelector('.set-reps').value, 10),
+            rest_seconds: row.querySelector('.set-rest').value === ''
+                ? null
+                : parseInt(row.querySelector('.set-rest').value, 10)
         }))
     };
 
@@ -429,11 +533,10 @@ async function handleFormSubmit(event) {
         const newWorkouts = await response.json();
         if (!response.ok) throw new Error('Failed to log workout');
 
-        if (workoutList.querySelector('p')) {
-            workoutList.innerHTML = '';
-        }
-        [...newWorkouts].reverse().forEach((entry) => renderWorkout(entry, true));
+        allWorkouts = [...newWorkouts, ...allWorkouts];
+        renderHistory();
         form.reset();
+        endSetTimer(false);
         resetSetRows();
         showMessage('Workout logged successfully.', false);
         loadExerciseDropdown();
@@ -445,32 +548,19 @@ async function handleFormSubmit(event) {
     }
 }
 
-async function deleteWorkout(id, workoutCard) {
+async function deleteWorkout(id) {
     if (isOffline) {
         showMessage('You are offline. Cannot delete workout.', true);
         return;
     }
 
-    const originalHeight = workoutCard.offsetHeight;
-    workoutCard.style.height = `${originalHeight}px`;
-    workoutCard.style.transition = 'all 0.3s ease-out';
-    workoutCard.style.opacity = '0';
-    workoutCard.style.transform = 'translateX(-100%)';
-    workoutCard.style.padding = '0';
-    workoutCard.style.margin = '0';
-
-    setTimeout(() => {
-        workoutCard.remove();
-        if (workoutList.children.length === 0) {
-            workoutList.innerHTML = '<p class="text-center text-gray-400">No workouts logged yet. Get started!</p>';
-        }
-        loadExerciseDropdown();
-    }, 300);
-
     try {
         const response = await apiFetch(`/workouts/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete workout');
-        showMessage('Workout deleted.', false);
+        allWorkouts = allWorkouts.filter((w) => w.id !== id);
+        renderHistory();
+        loadExerciseDropdown();
+        showMessage('Set deleted.', false);
     } catch {
         showMessage('Failed to delete on server. Please refresh.', true);
     }
@@ -715,34 +805,80 @@ document.querySelectorAll('#overview-range .range-btn').forEach((btn) => {
 });
 updateOverviewRangeButtons();
 
-function renderWorkout(workout, prepend = false) {
-    const workoutCard = document.createElement('div');
-    workoutCard.className = 'workout-card';
-    const date = new Date(workout.log_date * 1000);
-    const formattedDate = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    const formattedTime = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+let allWorkouts = [];
 
-    workoutCard.innerHTML = `
-        <div>
-            <h3 class="text-lg font-semibold text-white">${workout.exercise_name}</h3>
-            <p class="text-sm text-gray-300">${workout.sets} ${workout.sets === 1 ? 'set' : 'sets'} &times; ${workout.reps} reps @ ${workout.weight_kg} kg</p>
-            <p class="text-xs text-gray-400 mt-1">${formattedDate}, ${formattedTime}</p>
-        </div>
-        <button class="delete-btn text-gray-400 hover:text-red-500 transition-all p-1 rounded-full">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-        </button>
-    `;
+function escapeHtml(text) {
+    const el = document.createElement('div');
+    el.textContent = text;
+    return el.innerHTML;
+}
 
-    workoutCard.querySelector('.delete-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteWorkout(workout.id, workoutCard);
+const TRASH_ICON = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
+
+// Shows only the most recent training day, with the sets of each exercise grouped.
+function renderHistory() {
+    workoutList.innerHTML = '';
+    if (allWorkouts.length === 0) {
+        workoutList.innerHTML = '<p class="text-center text-gray-400">No workouts logged yet. Get started!</p>';
+        return;
+    }
+
+    const dayKey = (w) => new Date(w.log_date * 1000).toLocaleDateString('sv-SE');
+    const latestWorkout = allWorkouts.reduce((a, b) => (b.log_date > a.log_date ? b : a));
+    const latestDay = dayKey(latestWorkout);
+    const daySets = allWorkouts
+        .filter((w) => dayKey(w) === latestDay)
+        .sort((a, b) => a.log_date - b.log_date || a.id - b.id);
+
+    const groups = new Map();
+    daySets.forEach((w) => {
+        if (!groups.has(w.exercise_name)) groups.set(w.exercise_name, []);
+        groups.get(w.exercise_name).push(w);
     });
 
-    if (prepend) {
-        workoutList.prepend(workoutCard);
-    } else {
-        workoutList.appendChild(workoutCard);
-    }
+    const dateLabel = new Date(latestWorkout.log_date * 1000)
+        .toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const heading = document.createElement('p');
+    heading.className = 'text-sm text-slate-400';
+    heading.textContent = dateLabel;
+    workoutList.appendChild(heading);
+
+    groups.forEach((sets, exerciseName) => {
+        const totalSets = sets.reduce((acc, w) => acc + w.sets, 0);
+        const volume = sets.reduce((acc, w) => acc + w.weight_kg * w.sets * w.reps, 0);
+        const card = document.createElement('div');
+        card.className = 'workout-card';
+        card.style.display = 'block';
+
+        const rows = sets.map((w, i) => {
+            const label = w.sets > 1
+                ? `${w.sets} &times; ${w.reps} @ ${w.weight_kg} kg`
+                : `${w.weight_kg} kg &times; ${w.reps}`;
+            const rest = w.rest_seconds != null
+                ? `<span class="text-xs text-slate-400">rest ${formatClock(w.rest_seconds)}</span>` : '';
+            return `
+                <div class="flex items-center justify-between py-1.5 ${i ? 'border-t border-white/10' : ''}">
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-xs text-slate-400 w-10">Set ${w.set_number ?? i + 1}</span>
+                        <span class="text-sm text-white">${label}</span>
+                        ${rest}
+                    </div>
+                    <button class="delete-btn text-gray-400 hover:text-red-500 p-1 rounded-full" data-id="${w.id}" aria-label="Delete set">${TRASH_ICON}</button>
+                </div>`;
+        }).join('');
+
+        card.innerHTML = `
+            <div class="flex items-baseline justify-between mb-1">
+                <h3 class="text-lg font-semibold text-white">${escapeHtml(exerciseName)}</h3>
+                <span class="text-xs text-slate-400">${totalSets} ${totalSets === 1 ? 'set' : 'sets'} &middot; ${Math.round(volume).toLocaleString()} kg</span>
+            </div>
+            ${rows}`;
+
+        card.querySelectorAll('.delete-btn').forEach((btn) => {
+            btn.addEventListener('click', () => deleteWorkout(Number(btn.dataset.id)));
+        });
+        workoutList.appendChild(card);
+    });
 }
 
 function updateOnlineStatus() {

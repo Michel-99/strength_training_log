@@ -23,6 +23,7 @@ class WorkoutCreate(BaseModel):
 class SetCreate(BaseModel):
     weight_kg: float = Field(validation_alias=AliasChoices("weight", "weight_kg"))
     reps: int = Field(ge=1)
+    rest_seconds: int | None = Field(default=None, ge=0, le=86400)
 
     model_config = {"populate_by_name": True}
 
@@ -44,6 +45,8 @@ class WorkoutOut(BaseModel):
     weight_kg: float
     sets: int
     reps: int
+    set_number: int | None = None
+    rest_seconds: int | None = None
     created_at: datetime
 
     @computed_field

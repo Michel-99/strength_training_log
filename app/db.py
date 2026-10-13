@@ -34,6 +34,10 @@ class Workout(Base):
     sets: Mapped[int] = mapped_column(Integer)
     reps: Mapped[int] = mapped_column(Integer)
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Position of this set within its exercise entry (1 = first set).
+    set_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Rest taken before this set. For set 1 this is the rest since the previous exercise.
+    rest_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -173,32 +177,39 @@ class db_manager:
     def initialize_tables(self):
         """Creates all tables if they don't already exist."""
         Base.metadata.create_all(self.engine)
-        self.ensure_workout_user_id_column()
+        self.ensure_workout_columns()
 
-    def ensure_workout_user_id_column(self):
-        """Adds workout.user_id if missing in pre-existing databases."""
+    def ensure_workout_columns(self):
+        """Adds columns introduced after the first release to existing databases."""
+        new_columns = {
+            "user_id": "INTEGER",
+            "set_number": "INTEGER",
+            "rest_seconds": "INTEGER",
+        }
         dialect = self.engine.dialect.name
 
         with self.engine.begin() as conn:
             if dialect == "sqlite":
                 result = conn.execute(text("PRAGMA table_info(workout)"))
-                columns = {row[1] for row in result.fetchall()}
-                if "user_id" not in columns:
-                    conn.execute(text("ALTER TABLE workout ADD COLUMN user_id INTEGER"))
+                existing = {row[1] for row in result.fetchall()}
             elif dialect in {"postgresql", "postgres"}:
                 result = conn.execute(
                     text(
                         """
-                        SELECT 1
+                        SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = current_schema()
                           AND table_name = 'workout'
-                          AND column_name = 'user_id'
                         """
                     )
-                ).first()
-                if result is None:
-                    conn.execute(text("ALTER TABLE workout ADD COLUMN user_id INTEGER"))
+                )
+                existing = {row[0] for row in result.fetchall()}
+            else:
+                return
+
+            for name, sql_type in new_columns.items():
+                if name not in existing:
+                    conn.execute(text(f"ALTER TABLE workout ADD COLUMN {name} {sql_type}"))
 
     def get_session(self):
         """Returns a new database session."""
