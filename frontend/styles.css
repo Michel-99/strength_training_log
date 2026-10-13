@@ -195,3 +195,14 @@ select.form-input option {
 .section-toggle[aria-expanded="false"] .chevron {
     transform: rotate(-90deg);
 }
+.set-row.started .form-input {
+    border-color: var(--accent);
+}
+
+.set-row.done .set-label {
+    color: #34d399;
+}
+
+.set-row.done .set-label::after {
+    content: ' \2713';
+}

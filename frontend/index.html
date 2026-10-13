@@ -107,6 +107,17 @@
                 </button>
                 <div id="log-section" class="section-content">
                     <form id="log-form" class="px-6 pb-6 pt-1">
+                        <div id="rest-bar" class="chart-box flex items-center justify-between gap-3 mb-4">
+                            <div>
+                                <p id="rest-label" class="text-xs text-slate-400">Ready</p>
+                                <p id="rest-time" class="text-2xl font-bold text-white tabular-nums">&ndash;</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" id="rest-reset-btn" class="btn-ghost text-sm hidden">Reset</button>
+                                <button type="button" id="set-toggle-btn" class="btn-primary text-sm">Start set</button>
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <label for="exercise"
                                 class="block text-sm font-medium text-slate-300 mb-1">Exercise</label>
@@ -134,7 +145,7 @@
                 <div class="flex items-center justify-between px-6 py-4">
                     <button type="button" class="section-toggle flex items-center gap-3 text-left text-white"
                         data-target="history-section" aria-expanded="true">
-                        <span class="text-xl font-semibold">Workout History</span>
+                        <span class="text-xl font-semibold">Last Workout</span>
                         <span class="chevron text-xl">▾</span>
                     </button>
                     <span id="offline-indicator"
@@ -150,7 +161,7 @@
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                             </path>
                         </svg>
-                        Loading history...
+                        Loading...
                     </div>
                     <div id="workout-list" class="space-y-4"></div>
                 </div>
@@ -201,7 +212,7 @@
         class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-xl shadow-xl z-50">
         <span id="message-text"></span>
     </div>
-    <script src="/app.js?v=20261008"></script>
+    <script src="/app.js?v=20261010"></script>
 </body>
 
 </html>
