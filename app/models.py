@@ -58,6 +58,61 @@ class WorkoutOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class SetOut(BaseModel):
+    id: int
+    set_number: int
+    sets: int
+    reps: int
+    weight_kg: float
+    rest_seconds: int | None = None
+
+
+class ExerciseGroup(BaseModel):
+    exercise_name: str
+    total_sets: int
+    volume_kg: float
+    # % change of avg weight per rep, first logged session -> this one.
+    change_pct: float | None = None
+    sets: List[SetOut]
+
+
+class LatestWorkout(BaseModel):
+    """The most recent training day, with the sets grouped per exercise."""
+
+    date: str | None = None
+    exercises: List[ExerciseGroup] = []
+
+
+class OverviewDay(BaseModel):
+    date: str
+    strength_volume: float
+    strength_sets: int
+    endurance_minutes: float
+    endurance_km: float
+    endurance_load: float
+    ans_charge: float | None = None
+    recharge_status: int | None = None
+    hrv: float | None = None
+    sleep_score: float | None = None
+
+
+class OverviewSummary(BaseModel):
+    """Totals for the last 7 days of the requested range."""
+
+    strength_sessions: int
+    strength_volume_kg: float
+    endurance_hours: float
+    endurance_km: float
+    avg_ans_charge: float | None = None
+    avg_sleep_score: float | None = None
+
+
+class OverviewData(BaseModel):
+    days: List[OverviewDay]
+    summary: OverviewSummary
+    has_polar_data: bool
+
+
 class AuthRegister(BaseModel):
     email: str
     password: str = Field(min_length=8, max_length=128)
@@ -78,3 +133,7 @@ class AnalysisData(BaseModel):
     labels: List[str]
     volume: List[float]
     max_weight: List[float]
+    # Avg weight per rep (volume / reps), first vs last session in range.
+    change_pct: float | None = None
+    first_load: float | None = None
+    last_load: float | None = None

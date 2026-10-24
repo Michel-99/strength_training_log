@@ -214,3 +214,14 @@ class db_manager:
     def get_session(self):
         """Returns a new database session."""
         return self.Session()
+
+
+_shared_db: "db_manager | None" = None
+
+
+def get_db() -> "db_manager":
+    """Return the process-wide db_manager (one engine, tables created once)."""
+    global _shared_db
+    if _shared_db is None:
+        _shared_db = db_manager()
+    return _shared_db

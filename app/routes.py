@@ -5,7 +5,14 @@ from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from typing import List
 
-from app import models, polar_sync, service
+from app import (
+    analysis_service,
+    log_service,
+    models,
+    overview_service,
+    polar_sync,
+    service,
+)
 from app.polar import PolarClient, PolarError
 from app.db import User
 
@@ -50,7 +57,7 @@ def create_workout(
     workout: models.WorkoutCreate, user: User = Depends(get_current_user)
 ):
     """Logs a new workout entry."""
-    return service.add_workout(workout, user.id)
+    return log_service.add_workout(workout, user.id)
 
 
 @router.post("/workouts/batch", response_model=List[models.WorkoutOut], status_code=201)
@@ -58,19 +65,25 @@ def create_workout_sets(
     payload: models.WorkoutBatchCreate, user: User = Depends(get_current_user)
 ):
     """Logs one exercise with several sets (each with its own weight and reps)."""
-    return service.add_workout_sets(payload, user.id)
+    return log_service.add_workout_sets(payload, user.id)
+
+
+@router.get("/workouts/latest", response_model=models.LatestWorkout)
+def latest_workout(tz: str = "UTC", user: User = Depends(get_current_user)):
+    """The most recent training day (in the caller's time zone), grouped by exercise."""
+    return log_service.get_latest_workout(user.id, tz)
 
 
 @router.get("/workouts", response_model=List[models.WorkoutOut])
 def list_workouts(user: User = Depends(get_current_user)):
     """Returns all workouts ordered by most recent first."""
-    return service.get_workouts(user.id)
+    return log_service.get_workouts(user.id)
 
 
 @router.delete("/workouts/{workout_id}", status_code=204)
 def remove_workout(workout_id: int, user: User = Depends(get_current_user)):
     """Deletes a workout by its ID."""
-    deleted = service.delete_workout(workout_id, user.id)
+    deleted = log_service.delete_workout(workout_id, user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Workout not found")
 
@@ -78,13 +91,18 @@ def remove_workout(workout_id: int, user: User = Depends(get_current_user)):
 @router.get("/exercises", response_model=List[str])
 def list_exercises(user: User = Depends(get_current_user)):
     """Returns a sorted list of unique exercise names."""
-    return service.get_exercises(user.id)
+    return analysis_service.get_exercises(user.id)
 
 
 @router.get("/analysis", response_model=models.AnalysisData)
-def analysis(exercise: str, user: User = Depends(get_current_user)):
-    """Returns weight progression data for a given exercise."""
-    return service.get_analysis_data(exercise, user.id)
+def analysis(
+    exercise: str,
+    days: int = 0,
+    tz: str = "UTC",
+    user: User = Depends(get_current_user),
+):
+    """Volume and max weight per session for an exercise (days=0 means all time)."""
+    return analysis_service.get_analysis_data(exercise, user.id, max(0, days), tz)
 
 
 # @router.delete("/workouts/{workout_id}")
@@ -115,10 +133,12 @@ def analysis(exercise: str, user: User = Depends(get_current_user)):
 #         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/overview")
-def overview(days: int = 30, user: User = Depends(get_current_user)):
-    """Strength, endurance and recovery per day for the overview page."""
-    return service.get_overview(user.id, max(1, min(days, 90)))
+@router.get("/overview", response_model=models.OverviewData)
+def overview(
+    days: int = 30, tz: str = "UTC", user: User = Depends(get_current_user)
+):
+    """Strength, endurance and recovery per day, plus a 7-day summary."""
+    return overview_service.get_overview(user.id, max(1, min(days, 90)), tz)
 
 
 # --- Polar ---
