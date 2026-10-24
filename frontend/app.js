@@ -27,6 +27,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const form = document.getElementById('log-form');
 const logButton = document.getElementById('log-button');
 const workoutList = document.getElementById('workout-list');
+const progressSummary = document.getElementById('progress-summary');
 const loadingSpinner = document.getElementById('loading-spinner');
 const exerciseInput = document.getElementById('exercise');
 const setRows = document.getElementById('set-rows');
@@ -38,9 +39,10 @@ const offlineIndicator = document.getElementById('offline-indicator');
 
 const exerciseSelect = document.getElementById('exercise-select');
 const chartElement = document.getElementById('workout-chart');
+const TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+const tzQuery = `tz=${encodeURIComponent(TIME_ZONE)}`;
 let isOffline = !navigator.onLine;
-let rangeDays = 30;
-let lastAnalysis = null;
+let rangeDays = 14;
 let lastExercise = '';
 
 function toggleSection(button) {
@@ -103,27 +105,12 @@ function clearAuth() {
     authCard.classList.remove('hidden');
     appShell.classList.add('hidden');
     workoutList.innerHTML = '';
-    allWorkouts = [];
-    lastAnalysis = null;
     clearChart();
 }
 
 function clearChart() {
+    progressSummary.textContent = '';
     d3.select(chartElement).selectAll('*').remove();
-}
-
-function filterByRange(data) {
-    if (!rangeDays) return data;
-    const cutoff = new Date();
-    cutoff.setHours(0, 0, 0, 0);
-    cutoff.setDate(cutoff.getDate() - rangeDays);
-    const parse = d3.timeParse('%Y-%m-%d');
-    const keep = data.labels.map((label) => parse(label) >= cutoff);
-    return {
-        labels: data.labels.filter((_, i) => keep[i]),
-        volume: data.volume.filter((_, i) => keep[i]),
-        max_weight: data.max_weight.filter((_, i) => keep[i])
-    };
 }
 
 function updateRangeButtons() {
@@ -133,11 +120,8 @@ function updateRangeButtons() {
     });
 }
 
-function renderChart(fullData, exerciseName) {
+function renderChart(data, exerciseName) {
     clearChart();
-    lastAnalysis = fullData;
-    lastExercise = exerciseName;
-    const data = filterByRange(fullData);
 
     const parseDate = d3.timeParse('%Y-%m-%d');
     const sessions = data.labels.map((label, i) => ({
@@ -341,22 +325,23 @@ async function login(event) {
     }
 }
 
-async function fetchWorkouts() {
+async function fetchWorkouts(quiet = false) {
     if (isOffline) {
         showMessage('You are offline. Cannot load workouts.', true);
         workoutList.innerHTML = '<p class="text-center text-gray-400">Cannot load history while offline.</p>';
         return;
     }
 
-    loadingSpinner.classList.remove('hidden');
-    workoutList.innerHTML = '';
+    if (!quiet) {
+        loadingSpinner.classList.remove('hidden');
+        workoutList.innerHTML = '';
+    }
     try {
-        const response = await apiFetch('/workouts');
-        const workouts = await response.json();
+        const response = await apiFetch(`/workouts/latest?${tzQuery}`);
+        const latest = await response.json();
         if (!response.ok) throw new Error('Failed to fetch workouts');
 
-        allWorkouts = workouts;
-        renderHistory();
+        renderHistory(latest);
     } catch {
         workoutList.innerHTML = '<p class="text-center text-red-400">Failed to load history.</p>';
     } finally {
@@ -530,11 +515,10 @@ async function handleFormSubmit(event) {
             method: 'POST',
             body: JSON.stringify(workout)
         });
-        const newWorkouts = await response.json();
+        await response.json();
         if (!response.ok) throw new Error('Failed to log workout');
 
-        allWorkouts = [...newWorkouts, ...allWorkouts];
-        renderHistory();
+        await fetchWorkouts(true);
         form.reset();
         endSetTimer(false);
         resetSetRows();
@@ -557,8 +541,7 @@ async function deleteWorkout(id) {
     try {
         const response = await apiFetch(`/workouts/${id}`, { method: 'DELETE' });
         if (!response.ok) throw new Error('Failed to delete workout');
-        allWorkouts = allWorkouts.filter((w) => w.id !== id);
-        renderHistory();
+        await fetchWorkouts(true);
         loadExerciseDropdown();
         showMessage('Set deleted.', false);
     } catch {
@@ -594,6 +577,7 @@ async function loadExerciseDropdown() {
 }
 
 async function updateChart(exerciseName) {
+    lastExercise = exerciseName;
     if (!exerciseName) {
         clearChart();
         return;
@@ -604,11 +588,14 @@ async function updateChart(exerciseName) {
     }
 
     try {
-        const response = await apiFetch(`/analysis?exercise=${encodeURIComponent(exerciseName)}`);
+        const response = await apiFetch(`/analysis?exercise=${encodeURIComponent(exerciseName)}&days=${rangeDays}&${tzQuery}`);
         const data = await response.json();
         if (!response.ok) throw new Error('Failed to fetch analysis data');
 
         renderChart(data, exerciseName);
+        progressSummary.textContent = data.change_pct == null
+            ? 'Not enough sessions yet for a progress change.'
+            : `Avg weight per rep: ${data.first_load.toFixed(1)} kg \u2192 ${data.last_load.toFixed(1)} kg (${formatChange(data.change_pct)})`;
     } catch {
         showMessage('Failed to load chart data.', true);
     }
@@ -682,7 +669,7 @@ function handlePolarRedirect() {
 polarConnectBtn.addEventListener('click', connectPolar);
 polarSyncBtn.addEventListener('click', syncPolar);
 
-let overviewDays = 30;
+let overviewDays = 14;
 
 function drawMiniChart(svgEl, days, accessor, { type, color, unit, symmetric = false }) {
     const svg = d3.select(svgEl);
@@ -745,46 +732,39 @@ function drawMiniChart(svgEl, days, accessor, { type, color, unit, symmetric = f
     }
 }
 
-function renderOverviewTiles(days) {
-    const last7 = days.slice(-7);
-    const sum = (key) => last7.reduce((acc, d) => acc + d[key], 0);
-    const sessions = last7.filter((d) => d.strength_volume > 0).length;
-    const enduranceHours = sum('endurance_minutes') / 60;
-    const charges = last7.map((d) => d.ans_charge).filter((v) => v !== null);
-    const sleeps = last7.map((d) => d.sleep_score).filter((v) => v !== null);
-    const avg = (arr) => (arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : '–');
-
+function renderOverviewTiles(summary) {
+    const num = (value) => (value === null ? '\u2013' : value);
     const tiles = [
-        ['Strength', `${sessions}`, `sessions · ${Math.round(sum('strength_volume')).toLocaleString()} kg`],
-        ['Endurance', `${enduranceHours.toFixed(1)} h`, `${sum('endurance_km').toFixed(1)} km`],
-        ['Recovery', avg(charges), `ANS charge · sleep ${avg(sleeps)}`]
+        ['Strength', `${summary.strength_sessions}`,
+            `sessions \u00b7 ${summary.strength_volume_kg.toLocaleString()} kg`],
+        ['Endurance', `${summary.endurance_hours.toFixed(1)} h`, `${summary.endurance_km.toFixed(1)} km`],
+        ['Recovery', num(summary.avg_ans_charge), `ANS charge \u00b7 sleep ${num(summary.avg_sleep_score)}`]
     ];
     document.getElementById('overview-tiles').innerHTML = tiles.map(([title, big, small]) => `
         <div class="chart-box" style="padding:0.75rem">
             <p class="text-xs text-slate-400">${title}</p>
             <p class="text-xl font-bold text-white">${big}</p>
             <p class="text-xs text-slate-400">${small}</p>
-        </div>`).join('') ;
+        </div>`).join('');
 }
 
 async function loadOverview() {
     if (isOffline) return;
     try {
-        const response = await apiFetch(`/overview?days=${overviewDays}`);
+        const response = await apiFetch(`/overview?days=${overviewDays}&${tzQuery}`);
         const data = await response.json();
         if (!response.ok) throw new Error();
         const days = data.days;
-        renderOverviewTiles(days);
+        renderOverviewTiles(data.summary);
         drawMiniChart(document.getElementById('ov-strength'), days, (d) => d.strength_volume,
             { type: 'bar', color: '#6366F1', unit: 'kg' });
         drawMiniChart(document.getElementById('ov-endurance'), days, (d) => d.endurance_minutes,
             { type: 'bar', color: '#F59E0B', unit: 'min' });
         drawMiniChart(document.getElementById('ov-recovery'), days, (d) => d.ans_charge,
             { type: 'line', color: '#34D399', unit: '', symmetric: true });
-        const hasPolar = days.some((d) => d.endurance_minutes || d.ans_charge !== null);
-        document.getElementById('overview-hint').textContent = hasPolar
+        document.getElementById('overview-hint').textContent = data.has_polar_data
             ? ''
-            : 'No Polar data yet. Connect Polar in the Analysis tab to see endurance and recovery.';
+            : 'No Polar data yet. Connect Polar above to see endurance and recovery.';
     } catch {
         showMessage('Failed to load overview.', true);
     }
@@ -805,52 +785,41 @@ document.querySelectorAll('#overview-range .range-btn').forEach((btn) => {
 });
 updateOverviewRangeButtons();
 
-let allWorkouts = [];
-
 function escapeHtml(text) {
     const el = document.createElement('div');
     el.textContent = text;
     return el.innerHTML;
 }
 
+// "+4.2%" / "-1.0%" for the avg-weight-per-rep change; empty when unknown.
+function formatChange(pct) {
+    if (pct == null) return '';
+    const sign = pct > 0 ? '+' : '';
+    return `${sign}${pct.toFixed(1)}%`;
+}
+
 const TRASH_ICON = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
 
-// Shows only the most recent training day, with the sets of each exercise grouped.
-function renderHistory() {
+// Draws the latest training day as grouped by the server.
+function renderHistory(latest) {
     workoutList.innerHTML = '';
-    if (allWorkouts.length === 0) {
+    if (!latest.date) {
         workoutList.innerHTML = '<p class="text-center text-gray-400">No workouts logged yet. Get started!</p>';
         return;
     }
 
-    const dayKey = (w) => new Date(w.log_date * 1000).toLocaleDateString('sv-SE');
-    const latestWorkout = allWorkouts.reduce((a, b) => (b.log_date > a.log_date ? b : a));
-    const latestDay = dayKey(latestWorkout);
-    const daySets = allWorkouts
-        .filter((w) => dayKey(w) === latestDay)
-        .sort((a, b) => a.log_date - b.log_date || a.id - b.id);
-
-    const groups = new Map();
-    daySets.forEach((w) => {
-        if (!groups.has(w.exercise_name)) groups.set(w.exercise_name, []);
-        groups.get(w.exercise_name).push(w);
-    });
-
-    const dateLabel = new Date(latestWorkout.log_date * 1000)
-        .toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const heading = document.createElement('p');
     heading.className = 'text-sm text-slate-400';
-    heading.textContent = dateLabel;
+    heading.textContent = new Date(`${latest.date}T12:00:00`)
+        .toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     workoutList.appendChild(heading);
 
-    groups.forEach((sets, exerciseName) => {
-        const totalSets = sets.reduce((acc, w) => acc + w.sets, 0);
-        const volume = sets.reduce((acc, w) => acc + w.weight_kg * w.sets * w.reps, 0);
+    latest.exercises.forEach((group) => {
         const card = document.createElement('div');
         card.className = 'workout-card';
         card.style.display = 'block';
 
-        const rows = sets.map((w, i) => {
+        const rows = group.sets.map((w, i) => {
             const label = w.sets > 1
                 ? `${w.sets} &times; ${w.reps} @ ${w.weight_kg} kg`
                 : `${w.weight_kg} kg &times; ${w.reps}`;
@@ -859,7 +828,7 @@ function renderHistory() {
             return `
                 <div class="flex items-center justify-between py-1.5 ${i ? 'border-t border-white/10' : ''}">
                     <div class="flex items-baseline gap-3">
-                        <span class="text-xs text-slate-400 w-10">Set ${w.set_number ?? i + 1}</span>
+                        <span class="text-xs text-slate-400 w-10">Set ${w.set_number}</span>
                         <span class="text-sm text-white">${label}</span>
                         ${rest}
                     </div>
@@ -869,8 +838,8 @@ function renderHistory() {
 
         card.innerHTML = `
             <div class="flex items-baseline justify-between mb-1">
-                <h3 class="text-lg font-semibold text-white">${escapeHtml(exerciseName)}</h3>
-                <span class="text-xs text-slate-400">${totalSets} ${totalSets === 1 ? 'set' : 'sets'} &middot; ${Math.round(volume).toLocaleString()} kg</span>
+                <h3 class="text-lg font-semibold text-white">${escapeHtml(group.exercise_name)}</h3>
+                <span class="text-xs text-slate-400">${group.total_sets} ${group.total_sets === 1 ? 'set' : 'sets'} &middot; ${Math.round(group.volume_kg).toLocaleString()} kg${group.change_pct != null ? ` &middot; ${formatChange(group.change_pct)} vs first` : ''}</span>
             </div>
             ${rows}`;
 
@@ -909,7 +878,7 @@ document.querySelectorAll('#range-filter .range-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
         rangeDays = Number(btn.dataset.days);
         updateRangeButtons();
-        if (lastAnalysis) renderChart(lastAnalysis, lastExercise);
+        if (lastExercise) updateChart(lastExercise);
     });
 });
 updateRangeButtons();

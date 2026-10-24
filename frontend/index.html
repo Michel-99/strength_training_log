@@ -70,10 +70,21 @@
             <div id="view-overview">
                 <div class="px-6 py-4">
                     <h2 class="text-xl font-semibold text-white mb-3">Overview</h2>
+                    <div id="polar-card" class="chart-box flex items-center justify-between gap-3 mb-5">
+                        <div>
+                            <p class="font-semibold text-white">Polar</p>
+                            <p id="polar-status" class="text-xs text-slate-400">Checking...</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" id="polar-sync-btn" class="btn-secondary text-sm hidden">Sync now</button>
+                            <button type="button" id="polar-connect-btn" class="btn-primary text-sm hidden">Connect</button>
+                        </div>
+                    </div>
+
                     <div id="overview-range" class="segmented">
+                        <button type="button" data-days="7" class="range-btn">1 week</button>
                         <button type="button" data-days="14" class="range-btn">2 weeks</button>
-                        <button type="button" data-days="30" class="range-btn">1 month</button>
-                        <button type="button" data-days="60" class="range-btn">2 months</button>
+                        <button type="button" data-days="90" class="range-btn">3 months</button>
                     </div>
 
                     <div id="overview-tiles" class="grid grid-cols-3 gap-3 mt-4"></div>
@@ -170,17 +181,6 @@
 
             <div id="view-analysis" class="hidden">
                 <div class="px-6 py-4">
-                    <div id="polar-card" class="chart-box flex items-center justify-between gap-3 mb-5">
-                        <div>
-                            <p class="font-semibold text-white">Polar</p>
-                            <p id="polar-status" class="text-xs text-slate-400">Checking...</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="button" id="polar-sync-btn" class="btn-secondary text-sm hidden">Sync now</button>
-                            <button type="button" id="polar-connect-btn" class="btn-primary text-sm hidden">Connect</button>
-                        </div>
-                    </div>
-
                     <h2 class="text-xl font-semibold text-white mb-3">Progress Analysis</h2>
                     <label for="exercise-select" class="block text-sm font-medium text-slate-300 mb-1">Select
                         Exercise</label>
@@ -189,18 +189,19 @@
                         <option value="">Loading exercises...</option>
                     </select>
                     <div id="range-filter" class="segmented mt-4">
+                        <button type="button" data-days="7"
+                            class="range-btn">1 week</button>
                         <button type="button" data-days="14"
                             class="range-btn">2 weeks</button>
-                        <button type="button" data-days="30"
-                            class="range-btn">1 month</button>
-                        <button type="button" data-days="60"
-                            class="range-btn">2 months</button>
+                        <button type="button" data-days="90"
+                            class="range-btn">3 months</button>
                         <button type="button" data-days="0"
                             class="range-btn">All</button>
                     </div>
                     <div class="mt-3 chart-box">
                         <svg id="workout-chart" class="w-full h-72"></svg>
                     </div>
+                    <p id="progress-summary" class="text-sm text-white mt-3"></p>
                     <p class="text-xs text-slate-400 mt-2">One point per session (day): bars show total volume
                         (weight &times; sets &times; reps), the line shows the heaviest weight lifted.</p>
                 </div>
@@ -212,7 +213,7 @@
         class="hidden fixed bottom-4 right-4 bg-red-600 text-white py-3 px-5 rounded-xl shadow-xl z-50">
         <span id="message-text"></span>
     </div>
-    <script src="/app.js?v=20261010"></script>
+    <script src="/app.js?v=20261011"></script>
 </body>
 
 </html>

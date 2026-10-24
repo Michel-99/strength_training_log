@@ -13,11 +13,11 @@ from app.db import (
     PolarExercise,
     PolarRecovery,
     PolarSleep,
-    db_manager,
+    get_db,
 )
 from app.polar import PolarClient, PolarToken
 
-_db = db_manager()
+_db = get_db()
 
 _DURATION = re.compile(r"^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?$")
 

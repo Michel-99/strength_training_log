@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./strength_log.db)",
+      "Bash(cat .env*)",
+      "Bash(cat strength_log.db)"
+    ]
+  }
+}
