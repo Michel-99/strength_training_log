@@ -11,6 +11,7 @@ from app import (
     models,
     overview_service,
     polar_sync,
+    ratelimit,
     service,
 )
 from app.polar import PolarClient, PolarError
@@ -30,7 +31,9 @@ def get_current_user(
 
 
 @router.post("/auth/register", response_model=models.AuthResponse, status_code=201)
-def register(payload: models.AuthRegister):
+def register(
+    payload: models.AuthRegister, _: None = Depends(ratelimit.limit_auth)
+):
     """Registers a new account and returns an access token."""
     try:
         user, token = service.register_user(payload)
@@ -43,7 +46,7 @@ def register(payload: models.AuthRegister):
 
 
 @router.post("/auth/login", response_model=models.AuthResponse)
-def login(payload: models.AuthLogin):
+def login(payload: models.AuthLogin, _: None = Depends(ratelimit.limit_auth)):
     """Authenticates with email/password and returns an access token."""
     try:
         user, token = service.login_user(payload)
@@ -103,34 +106,6 @@ def analysis(
 ):
     """Volume and max weight per session for an exercise (days=0 means all time)."""
     return analysis_service.get_analysis_data(exercise, user.id, max(0, days), tz)
-
-
-# @router.delete("/workouts/{workout_id}")
-# def delete_workout(workout_id: int, conn = DBConnection):
-#     """Deletes a workout by its ID."""
-#     try:
-#         rowcount = service.logic_delete_workout(conn, workout_id)
-#         if rowcount == 0:
-#             raise HTTPException(status_code=404, detail="Workout not found")
-#         return {"message": "Workout deleted"}
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-# @router.get("/exercises", response_model=List[str])
-# def get_exercises(conn = DBConnection):
-#     """Fetches a list of unique exercise names."""
-#     try:
-#         return service.logic_get_exercises(conn)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
-
-# @router.get("/analysis", response_model=models.AnalysisData)
-# def get_analysis_data(exercise: str, conn = DBConnection):
-#     """Fetches weight progression data for a specific exercise."""
-#     try:
-#         return service.logic_get_analysis_data(conn, exercise)
-#     except Exception as e:
-#         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/overview", response_model=models.OverviewData)
