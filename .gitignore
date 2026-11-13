@@ -2,3 +2,14 @@
 .venv
 venv
 flutter_frontend/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Local databases
+*.db
+*.sqlite3
+
+# OS noise
+.DS_Store
