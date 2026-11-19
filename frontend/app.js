@@ -498,6 +498,7 @@ async function handleFormSubmit(event) {
 
     const workout = {
         exercise: exerciseInput.value,
+        tz: TIME_ZONE,
         sets: [...setRows.querySelectorAll('.set-row')].map((row) => ({
             weight: parseFloat(row.querySelector('.set-weight').value),
             reps: parseInt(row.querySelector('.set-reps').value, 10),

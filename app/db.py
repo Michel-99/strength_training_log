@@ -38,6 +38,38 @@ class Workout(Base):
     set_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Rest taken before this set. For set 1 this is the rest since the previous exercise.
     rest_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Nullable on purpose: no ForeignKey here, because the SQLite ALTER path in
+    # ensure_workout_columns cannot attach an FK constraint to an added column.
+    # Referential consistency is guaranteed by application logic and the
+    # backfill script (scripts/backfill_sessions.py).
+    session_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class Session(Base):
+    """One training session; typically one strength session per local day.
+
+    Source-aware from day one: `source`/`external_id` let non-manual sessions
+    (e.g. Polar exercises) be added later without another migration. There is
+    deliberately no unique constraint on (user, local day) — multiple sessions
+    per day (two-a-days, merged device sessions) stay representable.
+    """
+
+    __tablename__ = "session"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("user_account.id", ondelete="CASCADE"), index=True
+    )
+    source: Mapped[str] = mapped_column(String, default="manual")  # manual | polar | import (later)
+    external_id: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. Polar exercise id (later)
+    activity_type: Mapped[str | None] = mapped_column(String, nullable=True)  # "strength" for now
+    start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
+    end_time: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -177,6 +209,10 @@ class db_manager:
             "user_id": "INTEGER",
             "set_number": "INTEGER",
             "rest_seconds": "INTEGER",
+            # Nullable only; the ALTER path cannot attach the FK to `session`
+            # (see the comment on Workout.session_id), consistency is enforced
+            # by application logic and scripts/backfill_sessions.py.
+            "session_id": "INTEGER",
         }
         dialect = self.engine.dialect.name
 
