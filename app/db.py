@@ -3,6 +3,7 @@ import datetime
 from sqlalchemy import (
     JSON,
     BigInteger,
+    Boolean,
     Date,
     DateTime,
     Float,
@@ -63,13 +64,27 @@ class Session(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("user_account.id", ondelete="CASCADE"), index=True
     )
-    source: Mapped[str] = mapped_column(String, default="manual")  # manual | polar | import (later)
-    external_id: Mapped[str | None] = mapped_column(String, nullable=True)  # e.g. Polar exercise id (later)
-    activity_type: Mapped[str | None] = mapped_column(String, nullable=True)  # "strength" for now
+    source: Mapped[str] = mapped_column(
+        String, default="manual"
+    )  # manual | polar | import (later)
+    external_id: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )  # e.g. Polar exercise id (later)
+    activity_type: Mapped[str | None] = mapped_column(
+        String, nullable=True
+    )  # "strength" for now
     start_time: Mapped[datetime.datetime] = mapped_column(DateTime(timezone=True))
     end_time: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Session-level RPE (1-10) and free-text notes; validated at the API level.
+    rpe: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String, nullable=True)
+    # True only for sessions explicitly started via POST /sessions: their
+    # declared start_time is kept when the first set attaches. Provisional
+    # sessions (auto-created by logging or by the feedback endpoint) get their
+    # start_time re-stamped with the first set's timestamp on first attachment.
+    start_time_declared: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -210,42 +225,63 @@ class db_manager:
         """Creates all tables if they don't already exist."""
         Base.metadata.create_all(self.engine)
         self.ensure_workout_columns()
+        self.ensure_session_columns()
 
     def ensure_workout_columns(self):
         """Adds columns introduced after the first release to existing databases."""
-        new_columns = {
-            "user_id": "INTEGER",
-            "set_number": "INTEGER",
-            "rest_seconds": "INTEGER",
-            # Nullable only; the ALTER path cannot attach the FK to `session`
-            # (see the comment on Workout.session_id), consistency is enforced
-            # by application logic and scripts/backfill_sessions.py.
-            "session_id": "INTEGER",
-        }
+        self._ensure_columns(
+            "workout",
+            {
+                "user_id": "INTEGER",
+                "set_number": "INTEGER",
+                "rest_seconds": "INTEGER",
+                # Nullable only; the ALTER path cannot attach the FK to `session`
+                # (see the comment on Workout.session_id), consistency is enforced
+                # by application logic and scripts/backfill_sessions.py.
+                "session_id": "INTEGER",
+            },
+        )
+
+    def ensure_session_columns(self):
+        """Adds columns introduced after the `session` table was created."""
+        self._ensure_columns(
+            "session",
+            {
+                "rpe": "INTEGER",
+                "notes": "VARCHAR",
+                "start_time_declared": "BOOLEAN",
+            },
+        )
+
+    def _ensure_columns(self, table: str, new_columns: dict):
+        """ALTER TABLE ... ADD COLUMN for any missing column (SQLite + Postgres).
+
+        Columns are added nullable only: the SQLite ALTER path cannot attach
+        constraints (FK, NOT NULL without default), so referential consistency
+        is guaranteed by application logic and the backfill script.
+        """
         dialect = self.engine.dialect.name
 
         with self.engine.begin() as conn:
             if dialect == "sqlite":
-                result = conn.execute(text("PRAGMA table_info(workout)"))
+                result = conn.execute(text(f"PRAGMA table_info({table})"))
                 existing = {row[1] for row in result.fetchall()}
             elif dialect in {"postgresql", "postgres"}:
-                result = conn.execute(
-                    text(
-                        """
+                result = conn.execute(text("""
                         SELECT column_name
                         FROM information_schema.columns
                         WHERE table_schema = current_schema()
-                          AND table_name = 'workout'
-                        """
-                    )
-                )
+                          AND table_name = :table
+                        """), {"table": table})
                 existing = {row[0] for row in result.fetchall()}
             else:
                 return
 
             for name, sql_type in new_columns.items():
                 if name not in existing:
-                    conn.execute(text(f"ALTER TABLE workout ADD COLUMN {name} {sql_type}"))
+                    conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+                    )
 
     def get_session(self):
         """Returns a new database session."""

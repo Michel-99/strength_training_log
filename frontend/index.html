@@ -117,6 +117,13 @@
                     <span class="chevron text-xl">▾</span>
                 </button>
                 <div id="log-section" class="section-content">
+                    <div id="session-control" class="chart-box flex items-center justify-between gap-3 mx-6 mt-4 mb-4">
+                        <div>
+                            <p class="font-semibold text-white text-sm">Session</p>
+                            <p id="session-status" class="text-xs text-slate-400">No session yet today — logging starts one automatically.</p>
+                        </div>
+                        <button type="button" id="start-session-btn" class="btn-secondary text-sm">Start session</button>
+                    </div>
                     <form id="log-form" class="px-6 pb-6 pt-1">
                         <div id="rest-bar" class="chart-box flex items-center justify-between gap-3 mb-4">
                             <div>
@@ -149,6 +156,24 @@
                             Log Workout
                         </button>
                     </form>
+
+                    <div id="session-feedback" class="px-6 pb-6">
+                        <p class="text-sm font-semibold text-white mb-2">Session feedback</p>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label for="session-rpe" class="block text-xs text-gray-400 mb-1">RPE (1-10)</label>
+                                <select id="session-rpe" class="form-input w-full">
+                                    <option value="">—</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2">
+                                <label for="session-notes" class="block text-xs text-gray-400 mb-1">Notes</label>
+                                <input type="text" id="session-notes" class="form-input w-full"
+                                    maxlength="2000" placeholder="How did it feel?">
+                            </div>
+                        </div>
+                        <button type="button" id="save-feedback-btn" class="btn-secondary text-sm mt-3">Save feedback</button>
+                    </div>
                 </div>
             </div>
 

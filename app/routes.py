@@ -12,6 +12,7 @@ from app import (
     overview_service,
     polar_sync,
     service,
+    session_service,
 )
 from app.polar import PolarClient, PolarError
 from app.db import User
@@ -85,7 +86,36 @@ def start_session(
     payload: models.SessionCreate, user: User = Depends(get_current_user)
 ):
     """Explicitly starts a new training session now; later logging attaches to it."""
-    return log_service.start_session(user.id, payload.tz)
+    return session_service.start_session(user.id, payload.tz)
+
+
+@router.get("/sessions/current", response_model=models.SessionOut | None)
+def current_session(tz: str = "UTC", user: User = Depends(get_current_user)):
+    """The latest session of today (local day in `tz`), or null if none exists yet."""
+    return session_service.get_current_session(user.id, tz)
+
+
+@router.post("/sessions/current/feedback", response_model=models.SessionOut)
+def current_session_feedback(
+    payload: models.SessionFeedbackIn, user: User = Depends(get_current_user)
+):
+    """Find-or-create today's session and partially update its RPE/notes."""
+    return session_service.save_current_feedback(user.id, payload)
+
+
+@router.post(
+    "/sessions/{session_id}/feedback", response_model=models.SessionOut
+)
+def session_feedback(
+    session_id: int,
+    payload: models.SessionFeedbackUpdate,
+    user: User = Depends(get_current_user),
+):
+    """Repair endpoint: update RPE/notes of one of the caller's own sessions."""
+    updated = session_service.save_feedback(user.id, session_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return updated
 
 
 @router.delete("/workouts/{workout_id}", status_code=204)
