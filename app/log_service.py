@@ -1,83 +1,15 @@
 """Logging workouts and reading back the most recent training day."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from typing import Dict, List
 
 from app import analysis_service
-from app.db import Session, Workout, get_db
+from app.db import Workout, get_db
 from app.models import WorkoutBatchCreate, WorkoutCreate
-from app.timeutil import (
-    day_start_utc,
-    local_day,
-    next_day_start_utc,
-    resolve_tz,
-    today_local,
-)
+from app.session_service import resolve_session_for_logging
+from app.timeutil import local_day, next_day_start_utc, day_start_utc, resolve_tz
 
 _db = get_db()
-
-
-def _latest_session_of_day(db_session, user_id: int, tz_name: str) -> Session | None:
-    """The most recently created session whose start_time is on the current local day."""
-    tz = resolve_tz(tz_name)
-    day = today_local(tz)
-    return (
-        db_session.query(Session)
-        .filter(
-            Session.user_id == user_id,
-            Session.start_time >= day_start_utc(day, tz),
-            Session.start_time < next_day_start_utc(day, tz),
-        )
-        .order_by(Session.created_at.desc(), Session.id.desc())
-        .first()
-    )
-
-
-def _resolve_session(
-    db_session, user_id: int, tz_name: str, new_session: bool, first_created_at: datetime
-) -> Session:
-    """Target session for a new log entry.
-
-    Latest-session criterion: attach to the current local day's most recently
-    created session if one exists, otherwise create one whose start_time is the
-    first row's created_at. `new_session=True` always mints a fresh session.
-    """
-    target = None if new_session else _latest_session_of_day(db_session, user_id, tz_name)
-    if target is None:
-        target = Session(
-            user_id=user_id,
-            source="manual",
-            activity_type="strength",
-            start_time=first_created_at,
-            end_time=None,
-        )
-        db_session.add(target)
-        db_session.flush()
-    return target
-
-
-def start_session(user_id: int, tz_name: str = "UTC") -> Session:
-    """Explicitly start a new session now (POST /sessions).
-
-    The declared start_time is kept even when the first set attaches later;
-    subsequent logging follows the latest-session criterion and lands here.
-    """
-    resolve_tz(tz_name)  # validated like everywhere else (unknown names fall back to UTC)
-    session = _db.get_session()
-    try:
-        entry = Session(
-            user_id=user_id,
-            source="manual",
-            activity_type="strength",
-            start_time=datetime.now(timezone.utc),
-            end_time=None,
-        )
-        session.add(entry)
-        session.commit()
-        session.refresh(entry)
-        return entry
-    finally:
-        session.close()
 
 
 def add_workout(data: WorkoutCreate, user_id: int) -> Workout:
@@ -92,7 +24,7 @@ def add_workout(data: WorkoutCreate, user_id: int) -> Workout:
         )
         session.add(entry)
         session.flush()  # populates the server-default created_at
-        target = _resolve_session(
+        target = resolve_session_for_logging(
             session, user_id, data.tz, data.new_session, entry.created_at
         )
         entry.session_id = target.id
@@ -122,7 +54,7 @@ def add_workout_sets(data: WorkoutBatchCreate, user_id: int) -> List[Workout]:
         ]
         session.add_all(entries)
         session.flush()  # populates the server-default created_at
-        target = _resolve_session(
+        target = resolve_session_for_logging(
             session, user_id, data.tz, data.new_session, entries[0].created_at
         )
         for entry in entries:

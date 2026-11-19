@@ -32,6 +32,11 @@ const loadingSpinner = document.getElementById('loading-spinner');
 const exerciseInput = document.getElementById('exercise');
 const setRows = document.getElementById('set-rows');
 const addSetBtn = document.getElementById('add-set-btn');
+const startSessionBtn = document.getElementById('start-session-btn');
+const sessionStatus = document.getElementById('session-status');
+const sessionRpe = document.getElementById('session-rpe');
+const sessionNotes = document.getElementById('session-notes');
+const saveFeedbackBtn = document.getElementById('save-feedback-btn');
 
 const messageBox = document.getElementById('message-box');
 const messageText = document.getElementById('message-text');
@@ -96,6 +101,7 @@ function setAuth(token, email) {
     loadExerciseDropdown();
     loadPolarStatus();
     handlePolarRedirect();
+    loadCurrentSession();
     if (!views.overview.classList.contains('hidden')) loadOverview();
 }
 
@@ -325,6 +331,90 @@ async function login(event) {
     }
 }
 
+// --- Session control + feedback ---
+
+for (let i = 1; i <= 10; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = String(i);
+    sessionRpe.appendChild(opt);
+}
+
+function formatSessionTime(iso) {
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function renderSessionStatus(s) {
+    if (s) {
+        sessionStatus.textContent = `Session started ${formatSessionTime(s.start_time)}`;
+        sessionRpe.value = s.rpe != null ? String(s.rpe) : '';
+        sessionNotes.value = s.notes || '';
+    } else {
+        sessionStatus.textContent = 'No session yet today — logging starts one automatically.';
+        sessionRpe.value = '';
+        sessionNotes.value = '';
+    }
+}
+
+async function loadCurrentSession() {
+    if (isOffline || !getToken()) return;
+    try {
+        const response = await apiFetch(`/sessions/current?${tzQuery}`);
+        if (!response.ok) throw new Error('Failed to load session');
+        renderSessionStatus(await response.json());
+    } catch {
+        // keep the empty state; saving feedback will still create the session
+    }
+}
+
+async function startSession() {
+    if (isOffline) {
+        showMessage('You are offline. Cannot start a session.', true);
+        return;
+    }
+    startSessionBtn.disabled = true;
+    try {
+        const response = await apiFetch('/sessions', {
+            method: 'POST',
+            body: JSON.stringify({ tz: TIME_ZONE })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Failed to start session');
+        await loadCurrentSession();
+        showMessage(`Session started at ${formatSessionTime(data.start_time)}.`, false);
+    } catch (error) {
+        showMessage(error.message || 'Failed to start session.', true);
+    } finally {
+        startSessionBtn.disabled = false;
+    }
+}
+
+async function saveFeedback() {
+    if (isOffline) {
+        showMessage('You are offline. Cannot save feedback.', true);
+        return;
+    }
+    saveFeedbackBtn.disabled = true;
+    try {
+        const response = await apiFetch('/sessions/current/feedback', {
+            method: 'POST',
+            body: JSON.stringify({
+                tz: TIME_ZONE,
+                rpe: sessionRpe.value === '' ? null : Number(sessionRpe.value),
+                notes: sessionNotes.value
+            })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Invalid feedback');
+        renderSessionStatus(data);
+        showMessage('Feedback saved.', false);
+    } catch (error) {
+        showMessage(error.message || 'Failed to save feedback.', true);
+    } finally {
+        saveFeedbackBtn.disabled = false;
+    }
+}
+
 async function fetchWorkouts(quiet = false) {
     if (isOffline) {
         showMessage('You are offline. Cannot load workouts.', true);
@@ -520,6 +610,7 @@ async function handleFormSubmit(event) {
         if (!response.ok) throw new Error('Failed to log workout');
 
         await fetchWorkouts(true);
+        loadCurrentSession();
         form.reset();
         endSetTimer(false);
         resetSetRows();
@@ -872,6 +963,8 @@ logoutBtn.addEventListener('click', () => {
 });
 form.addEventListener('submit', handleFormSubmit);
 addSetBtn.addEventListener('click', addSetRow);
+startSessionBtn.addEventListener('click', startSession);
+saveFeedbackBtn.addEventListener('click', saveFeedback);
 resetSetRows();
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);

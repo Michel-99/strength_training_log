@@ -65,9 +65,30 @@ class SessionOut(BaseModel):
     activity_type: str | None = None
     start_time: datetime
     end_time: datetime | None = None
+    rpe: int | None = None
+    notes: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SessionFeedbackIn(BaseModel):
+    """Body of POST /sessions/current/feedback.
+
+    Partial-update semantics: a field left out (or null) keeps the stored
+    value; an explicit "" for notes clears it.
+    """
+
+    tz: str = "UTC"  # IANA name; determines "current day"
+    rpe: int | None = Field(default=None, ge=1, le=10)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class SessionFeedbackUpdate(BaseModel):
+    """Body of POST /sessions/{session_id}/feedback (repair endpoint; no tz)."""
+
+    rpe: int | None = Field(default=None, ge=1, le=10)
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class WorkoutOut(BaseModel):
