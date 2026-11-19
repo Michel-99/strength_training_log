@@ -3,45 +3,45 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strength Log</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Agora</title>
 
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#0b1020">
+    <meta name="theme-color" content="#0f1216">
     <link rel="apple-touch-icon" href="/icon-192x192.png">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    <link rel="stylesheet" href="/styles.css?v=20261006">
+    <link rel="stylesheet" href="/styles.css?v=20261119">
 </head>
 
 <body class="text-slate-100 min-h-screen antialiased">
-    <div class="container mx-auto max-w-2xl p-4 pt-8">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold tracking-tight gradient-text">Strength Log</h1>
-            <p class="text-base text-slate-400 mt-1">Log your workouts. See your progress.</p>
+    <div class="auth-wrap pt-8 pb-6">
+        <header class="text-center mb-6">
+            <h1 class="brand text-3xl tracking-tight">Agora</h1>
+            <p class="text-sm text-slate-400 mt-1">Log your workouts. See your progress.</p>
         </header>
 
-        <div id="auth-card" class="card mb-6">
-            <div class="p-6 border-b border-white/10">
-                <h2 class="text-xl font-semibold mb-3 text-white">Sign In</h2>
-                <p class="text-sm text-slate-400 mb-4">Create an account once, then log in with your email and password.
-                </p>
+        <div id="auth-card" class="card">
+            <div class="p-5">
+                <h2 class="text-lg font-semibold mb-2 text-white">Sign In</h2>
+                <p class="text-xs text-slate-400 mb-4">Create an account once, then log in with your email and
+                    password.</p>
 
                 <form id="auth-form" class="space-y-4">
                     <div>
-                        <label for="auth-email" class="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                        <label for="auth-email" class="block text-xs font-medium text-slate-300 mb-1">Email</label>
                         <input id="auth-email" type="email" required
                             class="form-input w-full"
                             placeholder="you@example.com">
                     </div>
                     <div>
-                        <label for="auth-password" class="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                        <label for="auth-password" class="block text-xs font-medium text-slate-300 mb-1">Password</label>
                         <input id="auth-password" type="password" minlength="8" required
                             class="form-input w-full"
                             placeholder="At least 8 characters">
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button id="register-btn" type="button"
                             class="w-full btn-secondary">Register</button>
                         <button id="login-btn" type="submit"
@@ -50,188 +50,204 @@
                 </form>
             </div>
         </div>
+    </div>
 
-        <div id="app-shell" class="card hidden">
-            <div class="p-4 border-b border-white/10 flex items-center justify-between">
-                <p id="current-user" class="text-sm text-slate-300"></p>
-                <button id="logout-btn"
-                    class="text-sm btn-ghost">Logout</button>
+    <div id="app-shell" class="hidden">
+        <header class="topbar">
+            <span class="brand text-base">Agora</span>
+            <div class="flex items-center gap-3 min-w-0">
+                <p id="current-user" class="text-xs text-slate-400 truncate"></p>
+                <button id="logout-btn" class="btn-ghost text-sm flex-none">Logout</button>
             </div>
+        </header>
 
-            <nav class="px-4 pt-4"><div class="segmented">
-                <a href="#/" data-view="overview"
-                    class="nav-tab">Overview</a>
-                <a href="#/log" data-view="log"
-                    class="nav-tab">Log</a>
-                <a href="#/analysis" data-view="analysis"
-                    class="nav-tab">Analysis</a>
-            </div></nav>
-
-            <div id="view-overview">
-                <div class="px-6 py-4">
-                    <h2 class="text-xl font-semibold text-white mb-3">Overview</h2>
-                    <div id="polar-card" class="chart-box flex items-center justify-between gap-3 mb-5">
-                        <div>
-                            <p class="font-semibold text-white">Polar</p>
-                            <p id="polar-status" class="text-xs text-slate-400">Checking...</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="button" id="polar-sync-btn" class="btn-secondary text-sm hidden">Sync now</button>
-                            <button type="button" id="polar-connect-btn" class="btn-primary text-sm hidden">Connect</button>
-                        </div>
-                    </div>
-
+        <main class="shell-main">
+            <section id="view-overview">
+                <div class="pagehead">
+                    <h2 class="text-xl font-bold text-white">Overview</h2>
                     <div id="overview-range" class="segmented">
-                        <button type="button" data-days="7" class="range-btn">1 week</button>
-                        <button type="button" data-days="14" class="range-btn">2 weeks</button>
-                        <button type="button" data-days="90" class="range-btn">3 months</button>
+                        <button type="button" data-days="7" class="range-btn">1 wk</button>
+                        <button type="button" data-days="14" class="range-btn">2 wk</button>
+                        <button type="button" data-days="90" class="range-btn">3 mo</button>
                     </div>
+                </div>
 
-                    <div id="overview-tiles" class="grid grid-cols-3 gap-3 mt-4"></div>
+                <div id="polar-card" class="strip">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-white">Polar</p>
+                        <p id="polar-status" class="text-xs text-slate-400 truncate">Checking...</p>
+                    </div>
+                    <div class="flex gap-2 flex-none">
+                        <button type="button" id="polar-sync-btn" class="btn-secondary text-sm hidden">Sync now</button>
+                        <button type="button" id="polar-connect-btn" class="btn-primary text-sm hidden">Connect</button>
+                    </div>
+                </div>
 
-                    <div class="mt-4 chart-box">
+                <div id="overview-tiles"></div>
+
+                <div class="ov-grid">
+                    <div class="chart-box">
                         <p class="text-sm font-semibold text-white">Strength</p>
                         <p class="text-xs text-slate-400 mb-1">Daily volume (kg)</p>
                         <svg id="ov-strength" class="w-full" style="height:150px"></svg>
                     </div>
-                    <div class="mt-3 chart-box">
+                    <div class="chart-box">
                         <p class="text-sm font-semibold text-white">Endurance</p>
                         <p class="text-xs text-slate-400 mb-1">Daily training time (min)</p>
                         <svg id="ov-endurance" class="w-full" style="height:150px"></svg>
                     </div>
-                    <div class="mt-3 chart-box">
+                    <div class="chart-box">
                         <p class="text-sm font-semibold text-white">Recovery</p>
                         <p class="text-xs text-slate-400 mb-1">Nightly ANS charge</p>
                         <svg id="ov-recovery" class="w-full" style="height:150px"></svg>
                     </div>
-                    <p id="overview-hint" class="text-xs text-slate-400 mt-3"></p>
                 </div>
-            </div>
+                <p id="overview-hint" class="text-xs text-slate-400 mt-3"></p>
+            </section>
 
-            <div id="view-log" class="hidden">
-            <div class="border-b border-white/10">
-                <button type="button"
-                    class="section-toggle w-full flex items-center justify-between px-6 py-4 text-left text-white"
-                    data-target="log-section" aria-expanded="true">
-                    <span class="text-xl font-semibold">Log a New Workout</span>
-                    <span class="chevron text-xl">▾</span>
-                </button>
-                <div id="log-section" class="section-content">
-                    <div id="session-control" class="chart-box flex items-center justify-between gap-3 mx-6 mt-4 mb-4">
-                        <div>
-                            <p class="font-semibold text-white text-sm">Session</p>
-                            <p id="session-status" class="text-xs text-slate-400">No session yet today — logging starts one automatically.</p>
-                        </div>
-                        <button type="button" id="start-session-btn" class="btn-secondary text-sm">Start session</button>
+            <section id="view-log" class="hidden space-y-3">
+                <div id="session-control" class="strip mb-0">
+                    <div class="min-w-0">
+                        <p class="text-sm font-semibold text-white">Session</p>
+                        <p id="session-status" class="text-xs text-slate-400">No session yet today — logging starts one
+                            automatically.</p>
                     </div>
-                    <form id="log-form" class="px-6 pb-6 pt-1">
-                        <div id="rest-bar" class="chart-box flex items-center justify-between gap-3 mb-4">
-                            <div>
-                                <p id="rest-label" class="text-xs text-slate-400">Ready</p>
-                                <p id="rest-time" class="text-2xl font-bold text-white tabular-nums">&ndash;</p>
-                            </div>
-                            <div class="flex gap-2">
-                                <button type="button" id="rest-reset-btn" class="btn-ghost text-sm hidden">Reset</button>
-                                <button type="button" id="set-toggle-btn" class="btn-primary text-sm">Start set</button>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="exercise"
-                                class="block text-sm font-medium text-slate-300 mb-1">Exercise</label>
-                            <input type="text" id="exercise"
-                                class="form-input w-full"
-                                placeholder="e.g., Bench Press" required>
-                        </div>
-
-                        <div id="set-rows" class="space-y-3 mb-3"></div>
-
-                        <button type="button" id="add-set-btn"
-                            class="add-set-btn w-full mb-6">
-                            + Add set
-                        </button>
-
-                        <button type="submit" id="log-button"
-                            class="btn-primary w-full py-3">
-                            Log Workout
-                        </button>
-                    </form>
-
-                    <div id="session-feedback" class="px-6 pb-6">
-                        <p class="text-sm font-semibold text-white mb-2">Session feedback</p>
-                        <div class="grid grid-cols-3 gap-3">
-                            <div>
-                                <label for="session-rpe" class="block text-xs text-gray-400 mb-1">RPE (1-10)</label>
-                                <select id="session-rpe" class="form-input w-full">
-                                    <option value="">—</option>
-                                </select>
-                            </div>
-                            <div class="col-span-2">
-                                <label for="session-notes" class="block text-xs text-gray-400 mb-1">Notes</label>
-                                <input type="text" id="session-notes" class="form-input w-full"
-                                    maxlength="2000" placeholder="How did it feel?">
-                            </div>
-                        </div>
-                        <button type="button" id="save-feedback-btn" class="btn-secondary text-sm mt-3">Save feedback</button>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="flex items-center justify-between px-6 py-4">
-                    <button type="button" class="section-toggle flex items-center gap-3 text-left text-white"
-                        data-target="history-section" aria-expanded="true">
-                        <span class="text-xl font-semibold">Last Workout</span>
-                        <span class="chevron text-xl">▾</span>
+                    <button type="button" id="start-session-btn" class="btn-secondary text-sm flex-none">Start session
                     </button>
-                    <span id="offline-indicator"
-                        class="hidden text-xs font-medium bg-amber-500/20 text-amber-300 px-2 py-1 rounded-full">Offline</span>
                 </div>
-                <div id="history-section" class="section-content px-6 pb-6 pt-1">
-                    <div id="loading-spinner" class="text-center text-slate-400 hidden">
-                        <svg class="animate-spin h-5 w-5 text-white inline-block mr-2"
-                            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                            </circle>
-                            <path class="opacity-75" fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                            </path>
-                        </svg>
-                        Loading...
-                    </div>
-                    <div id="workout-list" class="space-y-4"></div>
-                </div>
-            </div>
-            </div>
 
-            <div id="view-analysis" class="hidden">
-                <div class="px-6 py-4">
-                    <h2 class="text-xl font-semibold text-white mb-3">Progress Analysis</h2>
-                    <label for="exercise-select" class="block text-sm font-medium text-slate-300 mb-1">Select
-                        Exercise</label>
-                    <select id="exercise-select"
-                        class="form-input w-full">
-                        <option value="">Loading exercises...</option>
-                    </select>
-                    <div id="range-filter" class="segmented mt-4">
-                        <button type="button" data-days="7"
-                            class="range-btn">1 week</button>
-                        <button type="button" data-days="14"
-                            class="range-btn">2 weeks</button>
-                        <button type="button" data-days="90"
-                            class="range-btn">3 months</button>
-                        <button type="button" data-days="0"
-                            class="range-btn">All</button>
+                <div id="rest-bar" class="card p-4 flex items-center justify-between gap-3">
+                    <div>
+                        <p id="rest-label" class="text-xs text-slate-400">Ready</p>
+                        <p id="rest-time" class="text-3xl font-bold text-white tabular-nums leading-tight">&ndash;</p>
                     </div>
-                    <div class="mt-3 chart-box">
-                        <svg id="workout-chart" class="w-full h-72"></svg>
+                    <div class="flex items-center gap-2 flex-none">
+                        <button type="button" id="rest-reset-btn" class="btn-ghost text-sm hidden">Reset</button>
+                        <button type="button" id="set-toggle-btn" class="btn-primary text-base">Start set</button>
                     </div>
-                    <p id="progress-summary" class="text-sm text-white mt-3"></p>
-                    <p class="text-xs text-slate-400 mt-2">One point per session (day): bars show total volume
-                        (weight &times; sets &times; reps), the line shows the heaviest weight lifted.</p>
                 </div>
-            </div>
-        </div>
+
+                <form id="log-form" class="card p-4 space-y-3">
+                    <div>
+                        <label for="exercise" class="block text-xs font-medium text-slate-300 mb-1">Exercise</label>
+                        <input type="text" id="exercise"
+                            class="form-input w-full"
+                            placeholder="e.g., Bench Press" required>
+                    </div>
+
+                    <div id="set-rows" class="space-y-3"></div>
+
+                    <button type="button" id="add-set-btn"
+                        class="add-set-btn w-full">
+                        + Add set
+                    </button>
+
+                    <button type="submit" id="log-button"
+                        class="btn-primary w-full py-3">
+                        Log Workout
+                    </button>
+                </form>
+
+                <div id="session-feedback" class="card p-4">
+                    <p class="text-sm font-semibold text-white mb-2">Session feedback</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label for="session-rpe" class="block text-xs text-slate-400 mb-1">RPE (1-10)</label>
+                            <select id="session-rpe" class="form-input w-full">
+                                <option value="">—</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <label for="session-notes" class="block text-xs text-slate-400 mb-1">Notes</label>
+                            <input type="text" id="session-notes" class="form-input w-full"
+                                maxlength="2000" placeholder="How did it feel?">
+                        </div>
+                    </div>
+                    <button type="button" id="save-feedback-btn" class="btn-secondary text-sm mt-3">Save feedback
+                    </button>
+                </div>
+
+                <div class="card">
+                    <button type="button"
+                        class="section-toggle w-full flex items-center justify-between px-4 py-3 text-left"
+                        data-target="history-section" aria-expanded="true">
+                        <span class="flex items-center gap-2">
+                            <span class="text-base font-semibold text-white">Last workout</span>
+                            <span id="offline-indicator"
+                                class="hidden text-xs font-medium bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">Offline</span>
+                        </span>
+                        <span class="chevron text-slate-400">▾</span>
+                    </button>
+                    <div id="history-section" class="section-content px-4 pb-4">
+                        <div id="loading-spinner" class="text-center text-slate-400 hidden">
+                            <svg class="animate-spin h-5 w-5 text-white inline-block mr-2"
+                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4">
+                                </circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            Loading...
+                        </div>
+                        <div id="workout-list" class="space-y-3"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-analysis" class="hidden">
+                <div class="pagehead">
+                    <h2 class="text-xl font-bold text-white">Progress Analysis</h2>
+                    <div id="range-filter" class="segmented">
+                        <button type="button" data-days="7" class="range-btn">1 wk</button>
+                        <button type="button" data-days="14" class="range-btn">2 wk</button>
+                        <button type="button" data-days="90" class="range-btn">3 mo</button>
+                        <button type="button" data-days="0" class="range-btn">All</button>
+                    </div>
+                </div>
+
+                <label for="exercise-select" class="block text-xs font-medium text-slate-300 mb-1">Select exercise</label>
+                <select id="exercise-select"
+                    class="form-input w-full">
+                    <option value="">Loading exercises...</option>
+                </select>
+
+                <div class="chart-box mt-3">
+                    <svg id="workout-chart" class="w-full" style="height:280px"></svg>
+                </div>
+                <p id="progress-summary" class="text-sm text-white mt-3"></p>
+                <p class="text-xs text-slate-400 mt-2">One point per session (day): bars show total volume
+                    (weight &times; sets &times; reps), the line shows the heaviest weight lifted.</p>
+            </section>
+        </main>
+
+        <nav class="tabbar">
+            <a href="#/" data-view="overview" class="nav-tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <polyline points="3 12 7 12 10 4 14 20 17 12 21 12" />
+                </svg>
+                Overview
+            </a>
+            <a href="#/log" data-view="log" class="nav-tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="4" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                </svg>
+                Log
+            </a>
+            <a href="#/analysis" data-view="analysis" class="nav-tab">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <polyline points="3 17 9 11 13 15 21 7" />
+                    <polyline points="15 7 21 7 21 13" />
+                </svg>
+                Analysis
+            </a>
+        </nav>
     </div>
 
     <div id="message-box"
