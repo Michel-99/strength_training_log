@@ -80,6 +80,14 @@ def list_workouts(user: User = Depends(get_current_user)):
     return log_service.get_workouts(user.id)
 
 
+@router.post("/sessions", response_model=models.SessionOut, status_code=201)
+def start_session(
+    payload: models.SessionCreate, user: User = Depends(get_current_user)
+):
+    """Explicitly starts a new training session now; later logging attaches to it."""
+    return log_service.start_session(user.id, payload.tz)
+
+
 @router.delete("/workouts/{workout_id}", status_code=204)
 def remove_workout(workout_id: int, user: User = Depends(get_current_user)):
     """Deletes a workout by its ID."""

@@ -16,6 +16,12 @@ class WorkoutCreate(BaseModel):
     weight_kg: float = Field(validation_alias=AliasChoices("weight", "weight_kg"))
     sets: int
     reps: int
+    # Local-day resolution for attaching the row to a session; old clients
+    # that don't send it keep working (UTC).
+    tz: str = "UTC"
+    # When true, always start a fresh session for this entry instead of
+    # attaching to the current local day's latest session.
+    new_session: bool = False
 
     model_config = {"populate_by_name": True}
 
@@ -35,8 +41,33 @@ class WorkoutBatchCreate(BaseModel):
         validation_alias=AliasChoices("exercise", "exercise_name")
     )
     sets: List[SetCreate] = Field(min_length=1)
+    # Local-day resolution for attaching the rows to a session; old clients
+    # that don't send it keep working (UTC).
+    tz: str = "UTC"
+    # When true, always start a fresh session for this batch instead of
+    # attaching to the current local day's latest session.
+    new_session: bool = False
 
     model_config = {"populate_by_name": True}
+
+
+class SessionCreate(BaseModel):
+    """Body of POST /sessions: explicitly start a new session now."""
+
+    tz: str = "UTC"
+
+
+class SessionOut(BaseModel):
+    id: int
+    user_id: int
+    source: str
+    external_id: str | None = None
+    activity_type: str | None = None
+    start_time: datetime
+    end_time: datetime | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 class WorkoutOut(BaseModel):
