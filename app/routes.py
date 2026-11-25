@@ -74,7 +74,8 @@ def create_workout_sets(
 
 @router.get("/workouts/latest", response_model=models.LatestWorkout)
 def latest_workout(tz: str = "UTC", user: User = Depends(get_current_user)):
-    """The most recent training day (in the caller's time zone), grouped by exercise."""
+    """The most recent session (in the caller's time zone): its sets grouped
+    by exercise, plus that session's RPE and notes."""
     return log_service.get_latest_workout(user.id, tz)
 
 

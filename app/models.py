@@ -129,9 +129,13 @@ class ExerciseGroup(BaseModel):
 
 
 class LatestWorkout(BaseModel):
-    """The most recent training day, with the sets grouped per exercise."""
+    """The user's most recent session, with its sets grouped per exercise."""
 
     date: str | None = None
+    # Metadata of that session; None when no session exists (legacy rows only).
+    session_id: int | None = None
+    rpe: int | None = None
+    notes: str | None = None
     exercises: List[ExerciseGroup] = []
 
 

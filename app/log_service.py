@@ -1,10 +1,10 @@
-"""Logging workouts and reading back the most recent training day."""
+"""Logging workouts and reading back the most recent session."""
 
 from datetime import timedelta
 from typing import Dict, List
 
 from app import analysis_service
-from app.db import Workout, get_db
+from app.db import Session, Workout, get_db
 from app.models import WorkoutBatchCreate, WorkoutCreate
 from app.session_service import resolve_session_for_logging
 from app.timeutil import local_day, next_day_start_utc, day_start_utc, resolve_tz
@@ -98,7 +98,14 @@ def delete_workout(workout_id: int, user_id: int) -> bool:
 
 
 def get_latest_workout(user_id: int, tz_name: str = "UTC") -> Dict:
-    """All sets of the user's most recent local day, grouped by exercise."""
+    """The sets of the user's most recent session, grouped by exercise.
+
+    The unit is the session entity, not the local day: with two sessions on
+    one day the response contains only the last of them. Sets attach to the
+    newest session of the day, so the newest Workout row identifies it. Its
+    session metadata (rpe, notes) is returned alongside. Legacy rows that
+    never got a session_id (pre-backfill) keep the old newest-local-day view.
+    """
     tz = resolve_tz(tz_name)
     session = _db.get_session()
     try:
@@ -109,19 +116,49 @@ def get_latest_workout(user_id: int, tz_name: str = "UTC") -> Dict:
             .first()
         )
         if newest is None:
-            return {"date": None, "exercises": []}
+            return {
+                "date": None,
+                "session_id": None,
+                "rpe": None,
+                "notes": None,
+                "exercises": [],
+            }
 
-        day = local_day(newest.created_at, tz)
-        rows = (
-            session.query(Workout)
+        target = (
+            session.query(Session)
             .filter(
-                Workout.user_id == user_id,
-                Workout.created_at >= day_start_utc(day, tz),
-                Workout.created_at < next_day_start_utc(day, tz),
+                Session.id == newest.session_id,
+                Session.user_id == user_id,
             )
-            .order_by(Workout.created_at.asc(), Workout.id.asc())
-            .all()
+            .first()
+            if newest.session_id is not None
+            else None
         )
+
+        if target is not None:
+            # All sets of that session; the day is the session's local day.
+            rows = (
+                session.query(Workout)
+                .filter(
+                    Workout.user_id == user_id,
+                    Workout.session_id == target.id,
+                )
+                .order_by(Workout.created_at.asc(), Workout.id.asc())
+                .all()
+            )
+            day = local_day(target.start_time, tz)
+        else:
+            day = local_day(newest.created_at, tz)
+            rows = (
+                session.query(Workout)
+                .filter(
+                    Workout.user_id == user_id,
+                    Workout.created_at >= day_start_utc(day, tz),
+                    Workout.created_at < next_day_start_utc(day, tz),
+                )
+                .order_by(Workout.created_at.asc(), Workout.id.asc())
+                .all()
+            )
 
         groups: Dict[str, Dict] = {}
         for w in rows:
@@ -146,18 +183,27 @@ def get_latest_workout(user_id: int, tz_name: str = "UTC") -> Dict:
                     "rest_seconds": w.rest_seconds,
                 }
             )
+        # Progress is "first logged session -> this one", so the history is
+        # bounded by this session's last set (not by the end of its day, so a
+        # later same-day session is excluded).
         history = (
             session.query(Workout)
             .filter(
                 Workout.user_id == user_id,
                 Workout.exercise_name.in_(list(groups)),
-                Workout.created_at < next_day_start_utc(day, tz),
+                Workout.created_at <= rows[-1].created_at,
             )
             .all()
         )
         progress = analysis_service.calculate_progress_per_exercise(history, tz_name)
         for name, group in groups.items():
             group["change_pct"] = progress.get(name, {}).get("change_pct")
-        return {"date": day.isoformat(), "exercises": list(groups.values())}
+        return {
+            "date": day.isoformat(),
+            "session_id": target.id if target is not None else None,
+            "rpe": target.rpe if target is not None else None,
+            "notes": target.notes if target is not None else None,
+            "exercises": list(groups.values()),
+        }
     finally:
         session.close()

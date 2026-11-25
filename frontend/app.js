@@ -892,7 +892,7 @@ function formatChange(pct) {
 
 const TRASH_ICON = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
 
-// Draws the latest training day as grouped by the server.
+// Draws the latest session (its sets grouped by the server) incl. session RPE/notes.
 function renderHistory(latest) {
     workoutList.innerHTML = '';
     if (!latest.date) {
@@ -905,6 +905,21 @@ function renderHistory(latest) {
     heading.textContent = new Date(`${latest.date}T12:00:00`)
         .toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     workoutList.appendChild(heading);
+
+    const meta = [];
+    if (latest.rpe != null) {
+        meta.push('<span class="text-xs font-medium bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">RPE ' +
+            escapeHtml(String(latest.rpe)) + '/10</span>');
+    }
+    if (latest.notes) {
+        meta.push('<span class="text-xs text-slate-400 italic">' + escapeHtml(latest.notes) + '</span>');
+    }
+    if (meta.length) {
+        const metaRow = document.createElement('p');
+        metaRow.className = 'flex flex-wrap items-center gap-2 mt-1 mb-1';
+        metaRow.innerHTML = meta.join('');
+        workoutList.appendChild(metaRow);
+    }
 
     latest.exercises.forEach((group) => {
         const card = document.createElement('div');
